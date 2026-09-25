@@ -172,13 +172,12 @@ expect "pathways management is admin-only" 403 "$(status "$r")" "$(body "$r")"
 r=$(call pathways '{"action":"public_config"}')
 expect "pathways public_config is public" 200 "$(status "$r")" "$(body "$r")"
 
-# lifecycleTick is the scheduler's endpoint and takes no session, matching the
-# Base44 original. It is only allowed to do what the clock already says is due,
-# and every transition still has to pass its gate — so an unexpected caller
-# cannot advance anything that was not going to advance anyway. What it must
-# never do is fail: a 500 here means challenges stop closing on time.
+# lifecycleTick advances challenges on the clock — including closing voting on
+# a live competition. The Base44 original authenticated nobody, so this checks
+# the gate that replaced it. An anonymous 200 here is not a cosmetic failure:
+# it means a stranger can close your voting.
 r=$(call lifecycleTick '{}')
-expect "lifecycleTick runs and reports what it advanced" 200 "$(status "$r")" "$(body "$r")"
+expect "lifecycleTick refuses an anonymous caller" 401 "$(status "$r")" "$(body "$r")"
 
 # Anything not yet ported must still answer, via the Base44 fallback.
 r=$(call challengeApi '{"action":"challenges","id":"6aaa7e0a99df11bc8bcc649b"}')

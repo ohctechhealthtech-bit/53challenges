@@ -1,7 +1,9 @@
 package com.fiftythree.challenges.lifecycle;
 
 import com.fiftythree.challenges.entity.ChallengeEntity;
-
+import com.fiftythree.challenges.security.CallerResolver;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -9,9 +11,11 @@ import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -33,8 +37,13 @@ import org.springframework.web.bind.annotation.RestController;
  * there is no gate after {@code voting_open} and a competition whose voting
  * window has expired must stop accepting votes regardless.
  *
- * <p>Called by a scheduler, not by a person, so it takes no session and
- * attributes its work to "system".
+ * <p><b>Authorised, unlike the original.</b> The Base44 version took a request
+ * object and went straight to {@code asServiceRole} without checking anything,
+ * so anyone who knew the URL could force transitions — closing voting on a
+ * live competition, for instance. A scheduler authenticates with
+ * {@code X-Tick-Token}; an admin may trigger a tick with their session. Work
+ * is still attributed to "system" either way, because the clock decides what
+ * moves, not the caller.
  */
 @RestController
 public class LifecycleTickController {
@@ -49,14 +58,59 @@ public class LifecycleTickController {
 
   private final NativeChallengeQueryRepository challenges;
   private final GateEvaluator gates;
+  private final CallerResolver caller;
+  private final String tickToken;
 
-  public LifecycleTickController(NativeChallengeQueryRepository challenges, GateEvaluator gates) {
+  public LifecycleTickController(
+      NativeChallengeQueryRepository challenges,
+      GateEvaluator gates,
+      CallerResolver caller,
+      @Value("${app.lifecycle.tick-token:}") String tickToken) {
     this.challenges = challenges;
     this.gates = gates;
+    this.caller = caller;
+    this.tickToken = tickToken == null ? "" : tickToken.trim();
+  }
+
+  /**
+   * Whether this caller may advance the lifecycle.
+   *
+   * <p>Two ways in, because there are two legitimate callers. A scheduler has
+   * no session, so it presents {@code X-Tick-Token}; an admin triggering a tick
+   * by hand has no token, so their session is accepted instead.
+   *
+   * <p>Compared in constant time. The comparison is against a shared secret
+   * over an endpoint anyone can reach, which is exactly the situation where a
+   * short-circuiting {@code equals} leaks the secret a byte at a time.
+   */
+  private boolean permitted(String sessionToken, String presentedToken) {
+    if (!tickToken.isEmpty() && presentedToken != null && MessageDigest.isEqual(
+        tickToken.getBytes(StandardCharsets.UTF_8),
+        presentedToken.trim().getBytes(StandardCharsets.UTF_8))) {
+      return true;
+    }
+    return caller.isAdmin(sessionToken);
   }
 
   @PostMapping("/api/apps/{appId}/functions/lifecycleTick")
-  public ResponseEntity<?> handle(@RequestBody(required = false) Map<String, Object> body) {
+  public ResponseEntity<?> handle(
+      @RequestBody(required = false) Map<String, Object> body,
+      @RequestHeader(value = "X-Tick-Token", required = false) String presentedToken) {
+
+    Map<String, Object> request = body == null ? Map.of() : body;
+    String sessionToken = request.get("session_token") == null
+        ? null : String.valueOf(request.get("session_token")).trim();
+
+    if (!permitted(sessionToken, presentedToken)) {
+      // Logged at ERROR because the likeliest cause is a scheduler that was
+      // never given the token, and a tick that stops running is invisible —
+      // challenges simply never advance, with nothing to show for it.
+      log.error("lifecycleTick refused: no admin session and no valid X-Tick-Token. "
+          + "If this is the scheduler, set LIFECYCLE_TICK_TOKEN and send it as "
+          + "the X-Tick-Token header, or challenges will stop advancing.");
+      return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    }
+
     try {
       List<ChallengeEntity> due = challenges.findNativeByLifecycleStatuses(ADVANCEABLE);
       List<Map<String, String>> advanced = new ArrayList<>();

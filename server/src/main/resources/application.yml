@@ -103,6 +103,10 @@ app:
     model: ${LLM_MODEL:claude-sonnet-5}
     max-tokens: ${LLM_MAX_TOKENS:4096}
     timeout-seconds: ${LLM_TIMEOUT_SECONDS:120}
+  lifecycle:
+    # Shared secret the scheduler presents as X-Tick-Token. Unset means only
+    # an admin session can trigger a tick.
+    tick-token: ${LIFECYCLE_TICK_TOKEN:}
   jwt:
     # HMAC key for the tokens this API issues. Must be >= 32 bytes.
     secret: ${JWT_SECRET}
