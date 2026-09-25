@@ -1,0 +1,29 @@
+{
+  "name": "RegulatoryRule",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "jurisdiction_code": {
+      "type": "string"
+    },
+    "trigger_code": {
+      "type": "string",
+      "default": ""
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "code",
+    "name",
+    "jurisdiction_code",
+    "trigger_code"
+  ]
+}

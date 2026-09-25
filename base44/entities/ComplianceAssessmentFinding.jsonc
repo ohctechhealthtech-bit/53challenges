@@ -1,0 +1,71 @@
+{
+  "name": "ComplianceAssessmentFinding",
+  "type": "object",
+  "properties": {
+    "assessment_id": {
+      "type": "string"
+    },
+    "challenge_id": {
+      "type": "string",
+      "default": ""
+    },
+    "rule_version_id": {
+      "type": "string"
+    },
+    "rule_code": {
+      "type": "string",
+      "default": ""
+    },
+    "obligation_type": {
+      "type": "string",
+      "default": ""
+    },
+    "jurisdiction_code": {
+      "type": "string",
+      "default": ""
+    },
+    "gate": {
+      "type": "string",
+      "enum": [
+        "publish",
+        "open_entry",
+        "accept_minors",
+        "open_voting",
+        "close_and_judge",
+        "publish_results",
+        "release_prize"
+      ],
+      "default": "publish"
+    },
+    "blocking": {
+      "type": "boolean",
+      "default": true
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "in_progress",
+        "satisfied",
+        "waived"
+      ],
+      "default": "open"
+    },
+    "waiver_reason": {
+      "type": "string",
+      "default": ""
+    },
+    "waived_by": {
+      "type": "string",
+      "default": ""
+    },
+    "waived_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "assessment_id",
+    "rule_version_id"
+  ]
+}

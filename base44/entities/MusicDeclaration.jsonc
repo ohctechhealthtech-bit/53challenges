@@ -1,0 +1,61 @@
+{
+  "name": "MusicDeclaration",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "entry_id": {
+      "type": "string",
+      "default": ""
+    },
+    "basis": {
+      "type": "string",
+      "enum": [
+        "original",
+        "licensed",
+        "commercial",
+        "platform_track"
+      ],
+      "default": "original"
+    },
+    "track_title": {
+      "type": "string",
+      "default": ""
+    },
+    "track_artist": {
+      "type": "string",
+      "default": ""
+    },
+    "licence_evidence": {
+      "type": "string",
+      "default": ""
+    },
+    "clearance_status": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "pending",
+        "cleared",
+        "blocked"
+      ],
+      "default": "not_required"
+    },
+    "declared_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cleared_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "challenge_id",
+    "basis"
+  ]
+}

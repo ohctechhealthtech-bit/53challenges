@@ -1,0 +1,34 @@
+{
+  "name": "Creator",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "tag": {
+      "type": "string",
+      "default": ""
+    },
+    "role": {
+      "type": "string"
+    },
+    "quote": {
+      "type": "string",
+      "default": ""
+    },
+    "icon": {
+      "type": "string",
+      "default": "\ud83c\udfb8"
+    }
+  },
+  "required": [
+    "name",
+    "role"
+  ]
+}

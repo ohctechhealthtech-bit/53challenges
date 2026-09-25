@@ -1,0 +1,35 @@
+{
+  "name": "Jurisdiction",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "enum": [
+        "NSW",
+        "VIC",
+        "QLD",
+        "WA",
+        "SA",
+        "TAS",
+        "ACT",
+        "NT",
+        "NATIONAL"
+      ]
+    },
+    "name": {
+      "type": "string"
+    },
+    "regulator_name": {
+      "type": "string",
+      "default": ""
+    },
+    "regulator_link": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "code",
+    "name"
+  ]
+}

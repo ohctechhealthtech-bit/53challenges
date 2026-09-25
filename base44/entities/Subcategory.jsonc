@@ -1,0 +1,51 @@
+{
+  "name": "Subcategory",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "description": "DEPRECATED (Phase 0): legacy parent Category NAME text. Retained for verification only; use category_id."
+    },
+    "category_id": {
+      "type": "string",
+      "default": "",
+      "description": "Reference to Category.id \u2014 canonical parent (Phase 0)."
+    },
+    "slug": {
+      "type": "string",
+      "default": ""
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "sort_order": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "coming_soon",
+        "archived"
+      ],
+      "default": "active"
+    },
+    "module_key": {
+      "type": "string",
+      "default": ""
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name",
+    "category"
+  ]
+}

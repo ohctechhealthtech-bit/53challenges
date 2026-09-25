@@ -1,0 +1,28 @@
+{
+  "name": "IntakeQuestionnaire",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "superseded_by_id": {
+      "type": "string",
+      "default": ""
+    },
+    "change_note": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

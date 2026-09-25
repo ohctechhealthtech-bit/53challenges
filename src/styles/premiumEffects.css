@@ -1,0 +1,151 @@
+/* Premium Visual Effects & Animations */
+
+/* === Floating orbs === */
+@keyframes floating {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-18px); }
+}
+.floating { animation: floating 6s ease-in-out infinite; }
+
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-14px) translateX(8px); }
+}
+.float-slow { animation: floatSlow 9s ease-in-out infinite; }
+
+/* === Pulsing glows === */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 20px 0 rgba(109,74,255,0.18); }
+  50% { box-shadow: 0 0 40px 10px rgba(109,74,255,0.38); }
+}
+.glow-pulse { animation: glowPulse 4s ease-in-out infinite; }
+
+@keyframes premiumGlow {
+  0%, 100% { box-shadow: 0 0 30px -5px rgba(109,74,255,0.3), 0 0 0 1px rgba(109,74,255,0.1); }
+  50% { box-shadow: 0 0 50px 0px rgba(240,86,138,0.4), 0 0 0 1px rgba(240,86,138,0.2); }
+}
+.premium-glow { animation: premiumGlow 5s ease-in-out infinite; }
+
+@keyframes subtleGlow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.subtle-glow { animation: subtleGlow 3s ease-in-out infinite; }
+
+/* === Shimmer sweep across surfaces === */
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer-surface {
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmerSweep 3s linear infinite;
+}
+
+/* === Premium button shine === */
+.btn-premium { position: relative; overflow: hidden; }
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -100%;
+  width: 100%; height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+  transition: left 0.6s ease;
+  z-index: 1;
+}
+.btn-premium:hover::before { left: 100%; }
+
+/* === Entrance animations === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+
+@keyframes fadeInScale {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+.fade-in-scale { animation: fadeInScale 0.7s cubic-bezier(0.16,1,0.3,1) both; }
+
+@keyframes floatIn {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.float-in { animation: floatIn 0.8s cubic-bezier(0.16,1,0.3,1) both; }
+
+/* === Staggered list reveals === */
+.stagger-item-1 { animation: fadeInUp 0.6s ease both; animation-delay: 0ms; }
+.stagger-item-2 { animation: fadeInUp 0.6s ease both; animation-delay: 100ms; }
+.stagger-item-3 { animation: fadeInUp 0.6s ease both; animation-delay: 200ms; }
+.stagger-item-4 { animation: fadeInUp 0.6s ease both; animation-delay: 300ms; }
+.stagger-item-5 { animation: fadeInUp 0.6s ease both; animation-delay: 400ms; }
+.stagger-item-6 { animation: fadeInUp 0.6s ease both; animation-delay: 500ms; }
+
+/* === Scroll reveal === */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s cubic-bezier(0.16,1,0.3,1), transform 0.7s cubic-bezier(0.16,1,0.3,1);
+}
+.scroll-reveal.reveal {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* === Hover treatments === */
+.hover-lift { transition: transform 0.3s ease, box-shadow 0.3s ease; }
+.hover-lift:hover { transform: translateY(-6px); box-shadow: 0 18px 40px -12px rgba(109,74,255,0.25); }
+
+.hover-scale { transition: transform 0.3s ease; }
+.hover-scale:hover { transform: scale(1.03); }
+
+.hover-glow { transition: box-shadow 0.3s ease, border-color 0.3s ease; }
+.hover-glow:hover { box-shadow: 0 0 24px -4px rgba(109,74,255,0.45); border-color: rgba(109,74,255,0.5); }
+
+/* === Glassmorphism === */
+.glass-effect {
+  background: rgba(255,255,255,0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+/* === Layered premium shadow === */
+.premium-shadow {
+  box-shadow: 0 10px 30px -8px rgba(0,0,0,0.4), 0 4px 12px -4px rgba(109,74,255,0.15);
+}
+
+/* === Parallax fixed background === */
+.parallax-bg {
+  background-attachment: fixed;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+/* === Animated border glow === */
+@keyframes borderGlow {
+  0%, 100% { border-color: rgba(109,74,255,0.4); }
+  50% { border-color: rgba(240,86,138,0.6); }
+}
+.border-glow-anim { animation: borderGlow 4s ease-in-out infinite; }
+
+/* === Smooth scrolling === */
+html { scroll-behavior: smooth; }
+
+/* === Reduced motion === */
+@media (prefers-reduced-motion: reduce) {
+  .floating, .float-slow, .glow-pulse, .premium-glow, .subtle-glow,
+  .shimmer-surface, .btn-premium::before, .fade-in-up, .fade-in-scale,
+  .float-in, .stagger-item-1, .stagger-item-2, .stagger-item-3,
+  .stagger-item-4, .stagger-item-5, .stagger-item-6,
+  .border-glow-anim {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+  .scroll-reveal { opacity: 1 !important; transform: none !important; }
+}

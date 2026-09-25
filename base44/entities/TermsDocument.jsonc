@@ -1,0 +1,49 @@
+{
+  "name": "TermsDocument",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "clause_versions_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "merged_output": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "reviewed",
+        "published",
+        "superseded"
+      ],
+      "default": "draft"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "superseded_by": {
+      "type": "string",
+      "default": ""
+    },
+    "change_note": {
+      "type": "string",
+      "default": ""
+    },
+    "config_snapshot": {
+      "type": "object",
+      "default": {}
+    }
+  },
+  "required": [
+    "challenge_id"
+  ]
+}

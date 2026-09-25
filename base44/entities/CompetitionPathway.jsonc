@@ -1,0 +1,32 @@
+{
+  "name": "CompetitionPathway",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string",
+      "default": ""
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "national_state_ranking",
+        "state_to_national",
+        "local_to_state_to_national",
+        "series_championship",
+        "private_organisation",
+        "invitational"
+      ],
+      "default": "national_state_ranking"
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

@@ -1,0 +1,236 @@
+{
+  "name": "Entry",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "creator_email": {
+      "type": "string",
+      "default": ""
+    },
+    "creator_email_masked": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string",
+      "default": ""
+    },
+    "division": {
+      "type": "string",
+      "enum": [
+        "children",
+        "teens",
+        "adults",
+        "ndi"
+      ],
+      "default": "adults"
+    },
+    "work_type": {
+      "type": "string",
+      "enum": [
+        "link",
+        "text"
+      ],
+      "default": "text"
+    },
+    "work_text": {
+      "type": "string",
+      "default": ""
+    },
+    "work_link": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "description": "Moderation status. 'pending' means pending review \u2014 set on every new or re-submitted entry."
+    },
+    "review_note": {
+      "type": "string",
+      "default": "",
+      "description": "Reviewer feedback shown to the participant. Required when rejecting."
+    },
+    "reviewer_id": {
+      "type": "string",
+      "default": "",
+      "description": "User id of the admin or host who reviewed this entry."
+    },
+    "reviewer_email": {
+      "type": "string",
+      "default": ""
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "moderated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "moderation_batch_id": {
+      "type": "string",
+      "default": ""
+    },
+    "is_minor": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_winner": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_finalist": {
+      "type": "boolean",
+      "default": false
+    },
+    "finalist_week": {
+      "type": "string",
+      "default": ""
+    },
+    "upstream_entry_id": {
+      "type": "string",
+      "default": ""
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "native",
+        "upstream_archive"
+      ],
+      "default": "native"
+    },
+    "category": {
+      "type": "string",
+      "default": ""
+    },
+    "challenge_title": {
+      "type": "string",
+      "default": ""
+    },
+    "submitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "vote_count": {
+      "type": "number",
+      "default": 0
+    },
+    "terms_accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "terms_document_id": {
+      "type": "string",
+      "default": ""
+    },
+    "consent_status": {
+      "type": "string",
+      "enum": [
+        "pending_consent",
+        "valid",
+        "withdrawn"
+      ],
+      "default": "pending_consent"
+    },
+    "guardian_approval_status": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "pending",
+        "approved",
+        "declined",
+        "revoked"
+      ],
+      "default": "not_required",
+      "description": "Guardian verification gate for minor entries."
+    },
+    "guardian_id": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_name": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_relationship": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_email": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_mobile": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_address": {
+      "type": "string",
+      "default": ""
+    },
+    "approval_timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "decline_reason": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "challenge_id",
+    "title",
+    "creator_name",
+    "state",
+    "division"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.creator_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

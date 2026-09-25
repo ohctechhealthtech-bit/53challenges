@@ -1,0 +1,181 @@
+{
+  "name": "Challenge",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "theme": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "art-craft-making",
+        "food-farming-community",
+        "music-dance-performance",
+        "outdoor-adventure",
+        "photography-film-digital",
+        "writing-ideas-innovation"
+      ],
+      "description": "Canonical category slug (legacy field, retained for display/filters)."
+    },
+    "category_id": {
+      "type": "string",
+      "default": "",
+      "description": "Reference to Category.id - canonical parent taxonomy (Phase 0)."
+    },
+    "content_type": {
+      "type": "string",
+      "enum": [
+        "host_managed",
+        "admin_managed"
+      ],
+      "default": "admin_managed",
+      "description": "Who creates and manages the challenge content: the host, or the 53 team."
+    },
+    "divisions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "children",
+          "teens",
+          "adults",
+          "ndi"
+        ]
+      },
+      "default": [],
+      "description": "Age/eligibility divisions open for this challenge. Empty means all divisions."
+    },
+    "niche_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "state": {
+      "type": "string",
+      "default": ""
+    },
+    "stage": {
+      "type": "string",
+      "enum": [
+        "state",
+        "national",
+        "grand_final"
+      ],
+      "default": "state"
+    },
+    "season": {
+      "type": "string",
+      "default": ""
+    },
+    "parent_challenge_id": {
+      "type": "string",
+      "default": ""
+    },
+    "host_organisation_id": {
+      "type": "string",
+      "default": "",
+      "description": "Reference to Organisation.id"
+    },
+    "brief": {
+      "type": "string"
+    },
+    "cover_image": {
+      "type": "string",
+      "default": ""
+    },
+    "starts_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "submission_ends_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "voting_ends_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "lifecycle_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "in_review",
+        "approved",
+        "published",
+        "entry_open",
+        "voting_open",
+        "closed"
+      ],
+      "default": "draft",
+      "description": "Advanced ONLY by passing the matching lifecycle gate. Never set directly."
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "native",
+        "upstream_archive"
+      ],
+      "default": "native"
+    },
+    "upstream_id": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "draft",
+        "archived"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "title",
+    "theme",
+    "category",
+    "brief"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.lifecycle_status": {
+            "$in": [
+              "published",
+              "entry_open",
+              "voting_open",
+              "closed"
+            ]
+          }
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

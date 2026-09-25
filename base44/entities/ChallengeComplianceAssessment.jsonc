@@ -1,0 +1,40 @@
+{
+  "name": "ChallengeComplianceAssessment",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "fired_triggers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "classification": {
+      "type": "string",
+      "enum": [
+        "game_of_skill",
+        "game_of_chance",
+        "mixed",
+        "requires_legal_opinion"
+      ],
+      "default": "game_of_skill"
+    },
+    "assessed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rule_versions_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": [
+    "challenge_id"
+  ]
+}

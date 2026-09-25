@@ -1,0 +1,102 @@
+{
+  "name": "GuardianApprovalRequest",
+  "type": "object",
+  "properties": {
+    "guardian_id": {
+      "type": "string",
+      "default": ""
+    },
+    "guardian_email": {
+      "type": "string"
+    },
+    "guardian_name": {
+      "type": "string",
+      "default": ""
+    },
+    "child_name": {
+      "type": "string",
+      "default": ""
+    },
+    "child_email": {
+      "type": "string",
+      "default": ""
+    },
+    "entry_id": {
+      "type": "string",
+      "default": ""
+    },
+    "entry_title": {
+      "type": "string",
+      "default": ""
+    },
+    "challenge_id": {
+      "type": "string",
+      "default": ""
+    },
+    "challenge_title": {
+      "type": "string",
+      "default": ""
+    },
+    "division": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "approved",
+        "declined",
+        "revoked"
+      ],
+      "default": "pending"
+    },
+    "decline_reason": {
+      "type": "string",
+      "default": ""
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notified_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "guardian_email"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.guardian_email": "{{user.email}}"
+        },
+        {
+          "data.child_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

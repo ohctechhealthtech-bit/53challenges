@@ -1,0 +1,40 @@
+{
+  "name": "ObligationEvidence",
+  "type": "object",
+  "properties": {
+    "finding_id": {
+      "type": "string"
+    },
+    "evidence_type": {
+      "type": "string",
+      "enum": [
+        "permit_record",
+        "legal_signoff",
+        "consent_records",
+        "tandc_clause",
+        "evidence_item",
+        "authority_reference"
+      ]
+    },
+    "file_record": {
+      "type": "string",
+      "default": ""
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    },
+    "recorded_by": {
+      "type": "string",
+      "default": ""
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "finding_id",
+    "evidence_type"
+  ]
+}

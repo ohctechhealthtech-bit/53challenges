@@ -1,0 +1,52 @@
+{
+  "name": "SavedQuote",
+  "type": "object",
+  "properties": {
+    "rate_card_id": {
+      "type": "string"
+    },
+    "rate_card_version": {
+      "type": "number",
+      "default": 1
+    },
+    "configuration": {
+      "type": "object",
+      "default": {},
+      "description": "Snapshot of calculator inputs: tier, scope, scale, category, participants, duration, winner_mode, prize_pool, addons"
+    },
+    "computed_lines": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "gst": {
+      "type": "number",
+      "default": 0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "is_enterprise": {
+      "type": "boolean",
+      "default": false
+    },
+    "created_for": {
+      "type": "string",
+      "default": ""
+    },
+    "intake_response_id": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "rate_card_id"
+  ]
+}

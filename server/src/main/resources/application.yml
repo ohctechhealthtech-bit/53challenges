@@ -1,0 +1,125 @@
+# Every value comes from the environment: nothing secret is committed, and the
+# systemd unit on the Plesk box supplies them (see migration/DEPLOY-JAVA.md).
+server:
+  port: ${PORT:8081}
+  # nginx terminates TLS and proxies to this port on localhost only. The app
+  # itself speaks plain HTTP: the hop is over loopback and never leaves the
+  # machine, and keeping the certificate in one place (Plesk/nginx) means one
+  # renewal to manage rather than two.
+  address: 127.0.0.1
+  # Trust X-Forwarded-Proto/For from nginx, so the app knows the request really
+  # arrived over HTTPS. Without this any absolute URL it builds — redirects,
+  # links in emails — comes out as http:// and browsers block the mixed content.
+  # Safe here precisely because the app is unreachable except through nginx.
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: challenges-api
+  # SMTP, pointed at the AWS SES endpoint. Left unset, Spring still creates a
+  # sender but MailService reports every send as unsent (see app.mail.from).
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail.smtp.auth: true
+      # SES on 587 upgrades an unencrypted connection with STARTTLS. Required,
+      # not merely enabled: without this the credentials could be sent in the
+      # clear if the server declined to upgrade.
+      mail.smtp.starttls.enable: true
+      mail.smtp.starttls.required: true
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 20000
+      mail.smtp.writetimeout: 20000
+  datasource:
+    # characterEncoding takes a JAVA charset name, not a MySQL one. 'utf8mb4'
+    # is MySQL's name for it and the driver rejects it outright with
+    # "Unsupported character encoding". UTF-8 is the Java name, and the
+    # connector negotiates utf8mb4 on the wire from it — which is what the
+    # utf8mb4 schema and collation need.
+    url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME}?useUnicode=true&characterEncoding=UTF-8&connectionCollation=utf8mb4_unicode_ci&serverTimezone=UTC&rewriteBatchedStatements=true
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      # The schema is owned by migration/sql/schema.sql, never by Hibernate.
+      ddl-auto: none
+    open-in-view: false
+    properties:
+      # MariaDB, not MySQL. The server reports its version as "5.5.5-10.x.y" —
+      # a compatibility prefix MariaDB has carried since 10.0 so old MySQL
+      # clients keep working. Hibernate reads the 5.5.5 and warns that the
+      # dialect is below its minimum supported 8.0.0, then falls back to
+      # conservative behaviour for a database that is nothing of the sort.
+      # Naming MariaDBDialect skips that misdetection entirely.
+      hibernate.dialect: org.hibernate.dialect.MariaDBDialect
+      hibernate.jdbc.time_zone: UTC
+
+app:
+  # Where private files live (the default subdomain TLS key). No default on
+  # purpose: a default would end up inside a document root sooner or later,
+  # and nobody would notice until the key was downloadable.
+  private-files:
+    directory: ${PRIVATE_FILES_DIR:}
+  # Outbound email. Sending is best-effort everywhere it is used, so leaving
+  # these unset disables it rather than breaking the flows that notify.
+  mail:
+    from: ${MAIL_FROM:}
+    from-name: ${MAIL_FROM_NAME:53 Challenges}
+  # Plesk provisioning. Authenticates with a scoped API key rather than the
+  # panel admin password: this app creates subdomains, and has no need to
+  # hold the credential that can do everything else to the server too.
+  plesk:
+    base-url: ${PLESK_BASE_URL:}
+    base-domain: ${PLESK_BASE_DOMAIN:}
+    api-key: ${PLESK_API_KEY:}
+    admin-user: ${PLESK_ADMIN_USER:admin}
+    document-root: ${PLESK_DOCUMENT_ROOT:}
+    subdomain-www-root: ${PLESK_SUBDOMAIN_WWW_ROOT:}
+    # Where a provisioned subdomain sends /api/. The original pointed this at
+    # base44.app, which bypassed this application entirely - correct before
+    # the migration, wrong now. Defaults to the local app, matching what the
+    # apex domain already does.
+    api-proxy-target: ${PLESK_API_PROXY_TARGET:http://127.0.0.1:8081}
+    default-ip: ${PLESK_DEFAULT_IP:}
+    service-plan: ${PLESK_SERVICE_PLAN:}
+    parent-webspace: ${PLESK_PARENT_WEBSPACE:}
+    # Only pleskCreateKey uses this, and only to mint a scoped key. Leave it
+    # unset: create the key in the Plesk UI instead and the panel admin
+    # password never has to live on this server.
+    admin-password: ${PLESK_ADMIN_PASSWORD:}
+  # Stripe. Both keys are needed: the secret to call the API, the publishable
+  # one to hand to the browser. Absent either, the payment endpoints refuse
+  # with a clear message rather than half-working.
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+    publishable-key: ${STRIPE_PUBLISHABLE_KEY:}
+  # Language model, replacing Base44 integrations.Core.InvokeLLM. Absent a key
+  # the functions that need one refuse with a clear message rather than 500.
+  llm:
+    api-key: ${LLM_API_KEY:}
+    model: ${LLM_MODEL:claude-sonnet-5}
+    max-tokens: ${LLM_MAX_TOKENS:4096}
+    timeout-seconds: ${LLM_TIMEOUT_SECONDS:120}
+  jwt:
+    # HMAC key for the tokens this API issues. Must be >= 32 bytes.
+    secret: ${JWT_SECRET}
+    # 14 days, matching the TTL the Base44 custom session used.
+    ttl-seconds: ${JWT_TTL_SECONDS:1209600}
+  # Optional: when set, this app supplies its own Google OAuth client id
+  # instead of the one the upstream Challenge API returns, so Google sign-in
+  # is issued against credentials this app controls. Empty means defer to
+  # upstream, which is the current behaviour.
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+  upstream:
+    # Passwords live in the upstream Challenge API; login is delegated to it.
+    base-url: ${CHALLENGE_API_BASE_URL}
+    api-key: ${CHALLENGE_API_KEY}
+
+logging:
+  level:
+    root: INFO
+    com.fiftythree.challenges: DEBUG

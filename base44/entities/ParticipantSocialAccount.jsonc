@@ -1,0 +1,67 @@
+{
+  "name": "ParticipantSocialAccount",
+  "type": "object",
+  "properties": {
+    "owner_email": {
+      "type": "string",
+      "default": ""
+    },
+    "platform": {
+      "type": "string",
+      "enum": [
+        "instagram",
+        "facebook",
+        "tiktok",
+        "x",
+        "linkedin",
+        "youtube",
+        "threads",
+        "pinterest"
+      ]
+    },
+    "handle": {
+      "type": "string",
+      "default": ""
+    },
+    "profile_url": {
+      "type": "string",
+      "default": ""
+    },
+    "connected": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "platform"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "name": "VotingConfiguration",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "voting_purpose": {
+      "type": "string",
+      "enum": [
+        "determines_winner",
+        "weighted_component",
+        "finalist_selection",
+        "audience_award_only",
+        "engagement_only"
+      ],
+      "default": "engagement_only"
+    },
+    "weight_in_final_result": {
+      "type": "number",
+      "default": 0
+    },
+    "paid_voting": {
+      "type": "boolean",
+      "default": false
+    },
+    "bonus_or_referral_votes": {
+      "type": "boolean",
+      "default": false
+    },
+    "votes_per_person_per_account": {
+      "type": "number",
+      "default": 1
+    },
+    "votes_per_person_per_device": {
+      "type": "number",
+      "default": 1
+    },
+    "votes_per_person_per_period": {
+      "type": "number",
+      "default": 1
+    },
+    "identity_verification": {
+      "type": "string",
+      "enum": [
+        "none",
+        "email",
+        "account",
+        "stronger"
+      ],
+      "default": "email"
+    },
+    "geographic_restrictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "anti_bot_controls": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "live_totals_public": {
+      "type": "boolean",
+      "default": true
+    },
+    "vote_audit_procedure": {
+      "type": "string",
+      "default": ""
+    },
+    "tie_break_rule": {
+      "type": "string",
+      "default": ""
+    },
+    "moderator_adjustment_authority": {
+      "type": "boolean",
+      "default": false
+    },
+    "judges_can_override": {
+      "type": "boolean",
+      "default": false
+    },
+    "legal_opinion_reference": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "challenge_id",
+    "voting_purpose"
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

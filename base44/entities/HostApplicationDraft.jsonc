@@ -1,0 +1,72 @@
+{
+  "name": "HostApplicationDraft",
+  "type": "object",
+  "properties": {
+    "owner_email": {
+      "type": "string",
+      "default": ""
+    },
+    "owner_id": {
+      "type": "string",
+      "default": ""
+    },
+    "answers": {
+      "type": "object",
+      "default": {}
+    },
+    "revision": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "submitted",
+        "discarded"
+      ],
+      "default": "active"
+    },
+    "pricing_snapshot": {
+      "type": "object",
+      "default": {}
+    },
+    "proposal_id": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "data.owner_email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

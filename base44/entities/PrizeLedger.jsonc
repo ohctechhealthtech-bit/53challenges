@@ -1,0 +1,98 @@
+{
+  "name": "PrizeLedger",
+  "type": "object",
+  "properties": {
+    "competition_id": {
+      "type": "string"
+    },
+    "competition_title": {
+      "type": "string",
+      "default": ""
+    },
+    "funding_source": {
+      "type": "string",
+      "enum": [
+        "entrant_fees",
+        "sponsor",
+        "platform",
+        "mixed"
+      ],
+      "default": "platform"
+    },
+    "sponsor_name": {
+      "type": "string",
+      "default": ""
+    },
+    "sponsor_amount": {
+      "type": "number",
+      "default": 0
+    },
+    "sponsor_received": {
+      "type": "boolean",
+      "default": false
+    },
+    "sponsor_received_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sponsor_received_by": {
+      "type": "string",
+      "default": ""
+    },
+    "total_pool": {
+      "type": "number",
+      "default": 0
+    },
+    "currency": {
+      "type": "string",
+      "default": "AUD"
+    },
+    "placings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "placing": {
+            "type": "number"
+          },
+          "label": {
+            "type": "string",
+            "default": ""
+          },
+          "amount": {
+            "type": "number",
+            "default": 0
+          },
+          "entry_id": {
+            "type": "string",
+            "default": ""
+          },
+          "winner_name": {
+            "type": "string",
+            "default": ""
+          }
+        }
+      },
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "confirmed"
+      ],
+      "default": "draft"
+    },
+    "confirmed_by": {
+      "type": "string",
+      "default": ""
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "competition_id"
+  ]
+}

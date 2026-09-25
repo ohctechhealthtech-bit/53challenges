@@ -1,0 +1,68 @@
+{
+  "name": "SeriesStanding",
+  "type": "object",
+  "properties": {
+    "pathway_id": {
+      "type": "string"
+    },
+    "creator_name": {
+      "type": "string"
+    },
+    "creator_email": {
+      "type": "string",
+      "default": ""
+    },
+    "state": {
+      "type": "string",
+      "default": ""
+    },
+    "total_points": {
+      "type": "number",
+      "default": 0
+    },
+    "events_counted": {
+      "type": "number",
+      "default": 0
+    },
+    "best_placing": {
+      "type": "number",
+      "default": 0
+    },
+    "rank": {
+      "type": "number",
+      "default": 0
+    },
+    "breakdown": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "challenge_id": {
+            "type": "string"
+          },
+          "challenge_title": {
+            "type": "string",
+            "default": ""
+          },
+          "placing": {
+            "type": "number",
+            "default": 0
+          },
+          "points": {
+            "type": "number",
+            "default": 0
+          }
+        }
+      },
+      "default": []
+    },
+    "computed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "pathway_id",
+    "creator_name"
+  ]
+}

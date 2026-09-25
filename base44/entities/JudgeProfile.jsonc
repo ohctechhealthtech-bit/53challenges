@@ -1,0 +1,133 @@
+{
+  "name": "JudgeProfile",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string",
+      "default": ""
+    },
+    "applied_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "approved_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "experience": {
+      "type": "string",
+      "default": ""
+    },
+    "availability": {
+      "type": "string",
+      "default": ""
+    },
+    "credential_notes": {
+      "type": "string",
+      "default": ""
+    },
+    "wwcc_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "applied",
+        "current",
+        "expired"
+      ],
+      "default": "none"
+    },
+    "wwcc_number": {
+      "type": "string",
+      "default": ""
+    },
+    "wwcc_expiry": {
+      "type": "string",
+      "format": "date"
+    },
+    "agreement_signed": {
+      "type": "boolean",
+      "default": false
+    },
+    "agreement_signed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "conflict_of_interest": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "club",
+              "school",
+              "workplace",
+              "family"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "applicant",
+        "approved",
+        "active",
+        "suspended",
+        "retired",
+        "rejected"
+      ],
+      "default": "applicant"
+    },
+    "user_id": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name",
+    "email"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.email": "{{user.email}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

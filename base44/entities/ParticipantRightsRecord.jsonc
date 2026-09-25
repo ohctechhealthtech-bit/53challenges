@@ -1,0 +1,67 @@
+{
+  "name": "ParticipantRightsRecord",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "entry_id": {
+      "type": "string",
+      "default": ""
+    },
+    "participant_name": {
+      "type": "string"
+    },
+    "participant_email": {
+      "type": "string",
+      "default": ""
+    },
+    "is_minor": {
+      "type": "boolean",
+      "default": false
+    },
+    "guardian_consent_id": {
+      "type": "string",
+      "default": ""
+    },
+    "scope_grants": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "marketing_contact_grants": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "default": []
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "partially_revoked",
+        "revoked"
+      ],
+      "default": "active"
+    },
+    "accepted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "revoked_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "config_snapshot": {
+      "type": "object",
+      "default": {}
+    }
+  },
+  "required": [
+    "challenge_id",
+    "participant_name"
+  ]
+}

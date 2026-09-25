@@ -1,0 +1,76 @@
+{
+  "name": "AuditFinding",
+  "type": "object",
+  "properties": {
+    "review_id": {
+      "type": "string"
+    },
+    "competition_id": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "info",
+        "concern",
+        "material"
+      ],
+      "default": "info"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "terms",
+        "blind_judging",
+        "conflict",
+        "eligibility",
+        "evidence",
+        "vote_integrity",
+        "scoring",
+        "prize"
+      ],
+      "default": "scoring"
+    },
+    "detail": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "resolved",
+        "routed"
+      ],
+      "default": "open"
+    },
+    "resolution": {
+      "type": "string",
+      "default": ""
+    },
+    "created_by": {
+      "type": "string",
+      "default": ""
+    },
+    "created_by_name": {
+      "type": "string",
+      "default": ""
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_by": {
+      "type": "string",
+      "default": ""
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "review_id",
+    "competition_id"
+  ]
+}

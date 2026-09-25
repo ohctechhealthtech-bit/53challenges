@@ -1,0 +1,172 @@
+{
+  "name": "ChallengeDomain",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string",
+      "description": "Challenge this domain points at. Required for subdomains; empty for independent full domains."
+    },
+    "challenge_name": {
+      "type": "string",
+      "default": "",
+      "description": "Challenge title captured at creation, so the table still reads correctly if the challenge is renamed or removed"
+    },
+    "domain_type": {
+      "type": "string",
+      "enum": [
+        "subdomain",
+        "full_domain"
+      ],
+      "default": "subdomain",
+      "description": "subdomain = <slug>.53challenges.com; full_domain = independent domain"
+    },
+    "slug": {
+      "type": "string",
+      "description": "DNS label only, e.g. 'dance'. Empty for full_domain records."
+    },
+    "base_domain": {
+      "type": "string",
+      "description": "Apex domain the slug hangs off (subdomain only), or the full domain itself (full_domain)."
+    },
+    "full_domain": {
+      "type": "string",
+      "description": "The fully-qualified domain name displayed and looked up in Plesk."
+    },
+    "full_url": {
+      "type": "string",
+      "default": "",
+      "description": "https:// URL for display. Marked active only when status=active and ssl is active."
+    },
+    "parent_domain": {
+      "type": "string",
+      "default": "",
+      "description": "Parent subscription domain in Plesk (the webspace owner)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "provisioning",
+        "dns_pending",
+        "deployed",
+        "ssl_pending",
+        "active",
+        "failed",
+        "deleted"
+      ],
+      "default": "pending"
+    },
+    "hosting_mode": {
+      "type": "string",
+      "enum": [
+        "wildcard",
+        "separate_subdomain",
+        "full_domain"
+      ],
+      "default": "separate_subdomain",
+      "description": "Legacy hosting mode. separate_subdomain = challenge subdomain; full_domain = independent domain."
+    },
+    "git_location": {
+      "type": "string",
+      "default": "",
+      "description": "Git repository URL to clone into the document root after Plesk provisioning."
+    },
+    "git_deployment_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "cloning",
+        "deployed",
+        "failed",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Status of the git clone deployment into the document root."
+    },
+    "ssl_cert_url": {
+      "type": "string",
+      "default": "",
+      "description": "URL of the uploaded SSL certificate file (.pem). Manual SSL only."
+    },
+    "ssl_key_url": {
+      "type": "string",
+      "default": "",
+      "description": "URL of the uploaded SSL private key file (.key). Manual SSL only."
+    },
+    "ssl_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "installing",
+        "installed",
+        "active",
+        "failed",
+        "not_configured",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Status of SSL certificate installation for this domain."
+    },
+    "ssl_source": {
+      "type": "string",
+      "enum": [
+        "admin_default",
+        "manual"
+      ],
+      "default": "admin_default",
+      "description": "admin_default = active admin default SSL applied server-side; manual = admin-uploaded cert+key."
+    },
+    "plesk_site_id": {
+      "type": "string",
+      "default": "",
+      "description": "Plesk site/domain identifier"
+    },
+    "document_root": {
+      "type": "string",
+      "default": "",
+      "description": "Document root Plesk was asked to use"
+    },
+    "nginx_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "configured",
+        "failed"
+      ],
+      "default": "pending",
+      "description": "Status of the nginx /api/ reverse proxy directives for this subdomain."
+    },
+    "error_message": {
+      "type": "string",
+      "default": "",
+      "description": "Last provisioning or teardown failure, surfaced in the admin table"
+    }
+  },
+  "required": [
+    "domain_type",
+    "base_domain",
+    "full_domain"
+  ],
+  "rls": {
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "ResourceAllocation",
+  "type": "object",
+  "properties": {
+    "draft_id": {
+      "type": "string"
+    },
+    "resource_type_id": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number",
+      "default": 1
+    },
+    "rate_override": {
+      "type": "number",
+      "default": 0
+    },
+    "notes": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "draft_id",
+    "resource_type_id"
+  ]
+}

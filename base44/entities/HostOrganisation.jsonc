@@ -1,0 +1,43 @@
+{
+  "name": "HostOrganisation",
+  "type": "object",
+  "description": "DEPRECATED (Phase 0). Merged into Organisation. Do not create new records; consumers reference Organisation.id via host_organisation_id.",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "account_type_id": {
+      "type": "string",
+      "default": ""
+    },
+    "abn": {
+      "type": "string",
+      "default": ""
+    },
+    "contacts": {
+      "type": "string",
+      "default": ""
+    },
+    "state": {
+      "type": "string",
+      "default": ""
+    },
+    "billing_status": {
+      "type": "string",
+      "enum": [
+        "none",
+        "pending",
+        "paid",
+        "overdue"
+      ],
+      "default": "none"
+    },
+    "internal_notes": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

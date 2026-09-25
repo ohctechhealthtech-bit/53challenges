@@ -1,0 +1,20 @@
+{
+  "name": "Activity",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string"
+    },
+    "icon": {
+      "type": "string",
+      "default": "\ud83c\udfa8"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "text"
+  ]
+}

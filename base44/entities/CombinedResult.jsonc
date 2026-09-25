@@ -1,0 +1,56 @@
+{
+  "name": "CombinedResult",
+  "type": "object",
+  "properties": {
+    "entry_id": {
+      "type": "string"
+    },
+    "challenge_id": {
+      "type": "string",
+      "default": ""
+    },
+    "panel_id": {
+      "type": "string",
+      "default": ""
+    },
+    "entry_title": {
+      "type": "string",
+      "default": ""
+    },
+    "creator_name": {
+      "type": "string",
+      "default": ""
+    },
+    "judge_score": {
+      "type": "number",
+      "default": 0
+    },
+    "public_score": {
+      "type": "number",
+      "default": 0
+    },
+    "combined_score": {
+      "type": "number",
+      "default": 0
+    },
+    "combined_rank": {
+      "type": "number",
+      "default": 0
+    },
+    "public_votes": {
+      "type": "number",
+      "default": 0
+    },
+    "judge_count": {
+      "type": "number",
+      "default": 0
+    },
+    "computed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "entry_id"
+  ]
+}

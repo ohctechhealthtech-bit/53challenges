@@ -1,0 +1,36 @@
+{
+  "name": "ScoringModel",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "slug": {
+      "type": "string",
+      "default": ""
+    },
+    "automatic": {
+      "type": "boolean",
+      "default": false
+    },
+    "judge_weight": {
+      "type": "number",
+      "default": 1
+    },
+    "public_weight": {
+      "type": "number",
+      "default": 0
+    },
+    "judge_blind": {
+      "type": "boolean",
+      "default": false
+    },
+    "description": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

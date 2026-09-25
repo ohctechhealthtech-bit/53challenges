@@ -1,0 +1,74 @@
+{
+  "name": "MediaRelease",
+  "type": "object",
+  "properties": {
+    "challenge_id": {
+      "type": "string"
+    },
+    "entry_id": {
+      "type": "string",
+      "default": ""
+    },
+    "subject_name": {
+      "type": "string"
+    },
+    "subject_type": {
+      "type": "string",
+      "enum": [
+        "adult",
+        "minor"
+      ],
+      "default": "adult"
+    },
+    "guardian_consent_id": {
+      "type": "string",
+      "default": ""
+    },
+    "scopes_released": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "method": {
+      "type": "string",
+      "enum": [
+        "written_consent",
+        "verbal_consent",
+        "guardian_countersign"
+      ],
+      "default": "written_consent"
+    },
+    "release_file": {
+      "type": "string",
+      "default": ""
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "granted",
+        "declined",
+        "withdrawn"
+      ],
+      "default": "pending"
+    },
+    "granted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "withdrawn_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "challenge_id",
+    "subject_name"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "name": "LegalPosition",
+  "type": "object",
+  "properties": {
+    "topic": {
+      "type": "string"
+    },
+    "position": {
+      "type": "string",
+      "enum": [
+        "treat_as_skill",
+        "treat_as_chance",
+        "case_by_case"
+      ]
+    },
+    "source_document": {
+      "type": "string",
+      "default": ""
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "review_by": {
+      "type": "string",
+      "default": ""
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "topic",
+    "position"
+  ]
+}

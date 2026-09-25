@@ -1,0 +1,113 @@
+{
+  "name": "ApprovedClause",
+  "type": "object",
+  "properties": {
+    "identifier": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "promoter_identity",
+        "eligibility",
+        "entry_method",
+        "free_entry_route",
+        "judging",
+        "voting",
+        "draw_procedure",
+        "prizes",
+        "permit_statements",
+        "privacy",
+        "rights_grants",
+        "minors",
+        "disputes",
+        "liability",
+        "general"
+      ],
+      "default": "general"
+    },
+    "applicable_jurisdictions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "inclusion_rule": {
+      "type": "object",
+      "default": {}
+    },
+    "required_combinations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "prohibited_combinations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "mandatory": {
+      "type": "boolean",
+      "default": true
+    },
+    "effective_from": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "retirement_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "number",
+      "default": 1
+    },
+    "required_variables": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "modification_requires_reapproval": {
+      "type": "boolean",
+      "default": true
+    },
+    "legal_signoff": {
+      "type": "object",
+      "default": {},
+      "properties": {
+        "reviewer": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        }
+      }
+    },
+    "is_current": {
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": [
+    "identifier",
+    "title",
+    "body",
+    "category"
+  ]
+}

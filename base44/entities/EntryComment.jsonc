@@ -1,0 +1,54 @@
+{
+  "name": "EntryComment",
+  "type": "object",
+  "properties": {
+    "entry_id": {
+      "type": "string"
+    },
+    "challenge_id": {
+      "type": "string",
+      "default": ""
+    },
+    "text": {
+      "type": "string"
+    },
+    "author_name": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "required": [
+    "entry_id",
+    "text"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "created_by_id": "{{user.id}}"
+        },
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        }
+      ]
+    }
+  }
+}

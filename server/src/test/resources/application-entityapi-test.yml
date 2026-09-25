@@ -1,0 +1,44 @@
+# An in-memory database for the entity API integration test.
+#
+# The schema is created from the JPA entities rather than from
+# migration/sql/schema.sql, because that file is MariaDB-specific. What is
+# under test here is which ROWS come back for which caller, and that is the
+# same question whichever engine answers it.
+spring:
+  datasource:
+    url: jdbc:h2:mem:entityapi;MODE=MySQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate.dialect: org.hibernate.dialect.H2Dialect
+
+# Expect three DDL warnings in this test's output, and ignore them:
+#
+#   drop/create table "user"        — reserved word in H2, not in MariaDB
+#   create table site_setting       — its "key" and "value" columns, likewise
+#
+# Those three tables do not get created here and nothing in this test uses
+# them. Turning on hibernate.globally_quoted_identifiers fixes the names but
+# also quotes the LONGTEXT column definitions, which H2 then reads as an
+# unknown domain and the whole schema fails — so the warnings stay.
+#
+# None of this reaches production: MariaDB has no such reserved words, and the
+# real schema comes from migration/sql/schema.sql rather than from Hibernate.
+
+
+app:
+  jwt:
+    secret: test-secret-that-is-long-enough-for-hs512-signing-0123456789
+    ttl-seconds: 3600
+  upstream:
+    base-url: http://localhost:0/unused
+    api-key: test-api-key
+
+logging:
+  level:
+    root: WARN
+    com.fiftythree.challenges: WARN
