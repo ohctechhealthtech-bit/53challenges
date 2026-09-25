@@ -47,18 +47,21 @@ public class SmallFunctionsController {
   private final ObjectMapper mapper;
   private final String upstreamBase;
   private final String apiKey;
+  private final HostPackagesService hostPackagesService;
 
   public SmallFunctionsController(
       CustomSessionVerifier customSession,
       UserRepository users,
       ObjectMapper mapper,
       @Value("${app.upstream.base-url}") String upstreamBase,
-      @Value("${app.upstream.api-key}") String apiKey) {
+      @Value("${app.upstream.api-key}") String apiKey,
+      HostPackagesService hostPackagesService) {
     this.customSession = customSession;
     this.users = users;
     this.mapper = mapper;
     this.upstreamBase = upstreamBase;
     this.apiKey = apiKey;
+    this.hostPackagesService = hostPackagesService;
   }
 
   // ---------------------------------------------------------------- sessionRole
@@ -186,56 +189,10 @@ public class SmallFunctionsController {
   @PostMapping("/api/apps/{appId}/functions/hostPackages")
   public ResponseEntity<?> hostPackages() {
     try {
-      HttpRequest request = HttpRequest.newBuilder(URI.create(siblingFunction("hostPackagesApi")))
-          .timeout(Duration.ofSeconds(20))
-          .header("Content-Type", "application/json")
-          .header("x-api-key", apiKey)
-          .POST(HttpRequest.BodyPublishers.ofString("{}"))
-          .build();
-
-      HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
-      if (response.statusCode() / 100 != 2) {
-        return ResponseEntity.status(502)
-            .body(Map.of("error", "Hosting packages are unavailable right now."));
-      }
-
-      JsonNode data = mapper.readTree(response.body());
-      List<Map<String, Object>> packages = new ArrayList<>();
-      for (JsonNode p : data.path("packages")) {
-        if (p.path("is_active").isBoolean() && !p.path("is_active").asBoolean()) {
-          continue;
-        }
-        List<String> benefits = new ArrayList<>();
-        String intro = p.path("features_intro").asText("");
-        if (!intro.isEmpty()) {
-          benefits.add(intro);
-        }
-        for (JsonNode f : p.path("features")) {
-          benefits.add(f.asText(""));
-        }
-
-        Map<String, Object> out = new LinkedHashMap<>();
-        out.put("key", p.path("key").asText(""));
-        out.put("name", p.path("name").asText(""));
-        out.put("tagline", p.path("tagline").asText(""));
-        out.put("price", p.path("price").asText(""));
-        out.put("priceNote", p.path("price_note").asText(""));
-        out.put("audience", p.path("audience").asText(""));
-        out.put("benefits", benefits);
-        out.put("cta", p.path("cta").asText(""));
-        out.put("badge", p.path("badge").asText(""));
-        out.put("highlight", p.path("highlighted").asBoolean(false));
-        out.put("_sort", p.path("sort_order").asInt(0));
-        packages.add(out);
-      }
-
-      packages.sort((a, b) -> Integer.compare((int) a.get("_sort"), (int) b.get("_sort")));
-      packages.forEach(p -> p.remove("_sort"));
-
+      List<Map<String, Object>> packages = hostPackagesService.activePackages();
       return ResponseEntity.ok(Map.of("count", packages.size(), "packages", packages));
-    } catch (Exception e) {
-      log.error("hostPackages failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+    } catch (HostPackagesService.PackagesUnavailableException e) {
+      return ResponseEntity.status(502).body(Map.of("error", e.getMessage()));
     }
   }
 

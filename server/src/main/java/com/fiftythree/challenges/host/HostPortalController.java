@@ -7,6 +7,7 @@ import com.fiftythree.challenges.engine.EntryQueryRepository;
 import com.fiftythree.challenges.entity.ChallengeDraftEntity;
 import com.fiftythree.challenges.entity.ChallengeEntity;
 import com.fiftythree.challenges.entity.ChallengeRepository;
+import com.fiftythree.challenges.misc.HostPackagesService;
 import com.fiftythree.challenges.entity.EntryEntity;
 import com.fiftythree.challenges.entity.HostApplicationDraftEntity;
 import com.fiftythree.challenges.entity.HostInvoiceEntity;
@@ -109,6 +110,7 @@ public class HostPortalController {
   private final UserRepository users;
   private final JsonColumn json;
   private final ObjectMapper mapper;
+  private final HostPackagesService hostPackages;
 
   public HostPortalController(
       HostPricing pricing,
@@ -125,7 +127,8 @@ public class HostPortalController {
       CallerResolver caller,
       UserRepository users,
       JsonColumn json,
-      ObjectMapper mapper) {
+      ObjectMapper mapper,
+      HostPackagesService hostPackages) {
     this.pricing = pricing;
     this.organisations = organisations;
     this.push = push;
@@ -141,6 +144,7 @@ public class HostPortalController {
     this.users = users;
     this.json = json;
     this.mapper = mapper;
+    this.hostPackages = hostPackages;
   }
 
   /** Who is calling, and whether they arrived with a real session. */
@@ -747,7 +751,7 @@ public class HostPortalController {
     out.put("messages", List.of());
     out.put("posts", List.of());
     out.put("assets", List.of());
-    out.put("packages", List.of());
+    out.put("packages", hostPackages.activePackagesOrEmpty());
     return ResponseEntity.ok(out);
   }
 
