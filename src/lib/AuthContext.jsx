@@ -2,7 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
-import { clearSessionToken, getSessionToken } from '@/lib/customSession';
+import { clearSessionToken, getSessionToken, getAccessToken, setAccessToken } from '@/lib/customSession';
 
 // Custom (Challenge-API) logins carry no platform role, so admin screens would
 // deny actual admins. Resolve the role from this app's own user record.
@@ -15,6 +15,32 @@ async function resolveSessionRole(u) {
     return role ? { ...u, role } : u;
   } catch {
     return u;
+  }
+}
+
+
+// Browsers that signed in before login started issuing a JWT hold only the
+// session token. Trade it for one on first load, so the entity API sees a
+// signed-in user rather than an anonymous one and their own rows stop being
+// filtered out. Failure is not fatal — every ported function still accepts the
+// session token, so the user keeps working and gets a JWT at next login.
+async function ensureAccessToken() {
+  const token = getSessionToken();
+  if (!token || getAccessToken()) return;
+  try {
+    const res = await base44.functions.invoke('challengeApi', {
+      action: 'exchange_token',
+      session_token: token,
+    });
+    const jwt = res.data?.access_token;
+    if (jwt) {
+      setAccessToken(jwt);
+      // appParams.token was read at module load, so the client needs telling
+      // directly; without this the token only takes effect on the next reload.
+      base44.setToken(jwt);
+    }
+  } catch {
+    // Anonymous to the entity API until the next sign-in. Not worth blocking on.
   }
 }
 
@@ -38,9 +64,12 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingPublicSettings(true);
       setAuthError(null);
 
-      // Challenge-API session (no platform token): restore from localStorage
-      // and skip the platform auth gate entirely.
-      if (!appParams.token) {
+      // Challenge-API session: restore from localStorage and skip the platform
+      // auth gate entirely. Keyed on our own session token as well as the
+      // absence of a platform one, because since login began issuing a JWT
+      // appParams.token holds a credential this app minted — testing only
+      // !token here would skip the restore for every signed-in user.
+      if (!appParams.token || getSessionToken()) {
         const saved = localStorage.getItem('challengeApi_session');
         // A saved profile without its signed token is a dead session: the UI
         // would look signed in while every server call is refused. Drop it.
@@ -48,6 +77,7 @@ export const AuthProvider = ({ children }) => {
           try { localStorage.removeItem('challengeApi_session'); } catch {}
         } else if (saved) {
           try {
+            await ensureAccessToken();
             const u = JSON.parse(saved);
             const withRole = await resolveSessionRole(u);
             setUser(withRole);

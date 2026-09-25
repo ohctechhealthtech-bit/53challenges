@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fiftythree.challenges.compliance.ComplianceAuditService;
 import com.fiftythree.challenges.lifecycle.LifecycleGateService;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
+import com.fiftythree.challenges.security.JwtService;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -88,6 +89,7 @@ public class ChallengeApiController {
   private final LifecycleGateService gates;
   private final ComplianceAuditService audit;
   private final CustomSessionVerifier sessions;
+  private final JwtService jwt;
   private final ObjectMapper mapper;
   private final String googleClientId;
 
@@ -96,12 +98,14 @@ public class ChallengeApiController {
       LifecycleGateService gates,
       ComplianceAuditService audit,
       CustomSessionVerifier sessions,
+      JwtService jwt,
       ObjectMapper mapper,
       @Value("${app.google.client-id:}") String googleClientId) {
     this.upstream = upstream;
     this.gates = gates;
     this.audit = audit;
     this.sessions = sessions;
+    this.jwt = jwt;
     this.mapper = mapper;
     this.googleClientId = googleClientId;
   }
@@ -120,6 +124,9 @@ public class ChallengeApiController {
       }
       if ("entry_totals".equals(action)) {
         return entryTotals();
+      }
+      if ("exchange_token".equals(action)) {
+        return exchangeToken(request);
       }
       if (RESET_ACTIONS.containsKey(action)) {
         return passwordReset(action, request);
@@ -307,7 +314,8 @@ public class ChallengeApiController {
           "user", user,
           // Server-signed proof of identity: backend functions verify this
           // rather than trusting an email in a request body.
-          "session_token", sessions.sign(email, name, uid)));
+          "session_token", sessions.sign(email, name, uid),
+          "access_token", jwt.issue(email, name, uid)));
     } catch (Exception e) {
       log.error("Google login failed", e);
       return ResponseEntity.status(500)
@@ -315,7 +323,29 @@ public class ChallengeApiController {
     }
   }
 
-  /** Attaches a signed session token to a successful login response. */
+
+  /**
+   * Trades a valid session token for a JWT.
+   *
+   * <p>Only needed by browsers that signed in before login began issuing both
+   * credentials. Without it those users would appear anonymous to the entity
+   * API — their data silently missing — until the session expired and they
+   * signed in again.
+   *
+   * <p>This grants nothing new: the session token is already server-signed
+   * proof of the same identity, and an invalid one is refused outright.
+   */
+  private ResponseEntity<?> exchangeToken(Map<String, Object> request) {
+    CustomSessionVerifier.Session session =
+        sessions.verify(str(request.get("session_token")));
+    if (session == null) {
+      return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    }
+    return ResponseEntity.ok(Map.of(
+        "success", true,
+        "access_token", jwt.issue(session.email(), session.name(), session.uid())));
+  }
+  /** Attaches both credentials — session token and JWT — to a successful login. */
   private JsonNode attachSessionToken(JsonNode body) {
     if (!(body instanceof ObjectNode parsed)) {
       return body;
@@ -324,10 +354,13 @@ public class ChallengeApiController {
     if (!parsed.path("success").asBoolean(false) || email.isEmpty()) {
       return parsed;
     }
-    parsed.put("session_token", sessions.sign(
-        email,
-        parsed.path("user").path("full_name").asText(""),
-        parsed.path("user").path("id").asText("")));
+    String name = parsed.path("user").path("full_name").asText("");
+    String uid = parsed.path("user").path("id").asText("");
+    parsed.put("session_token", sessions.sign(email, name, uid));
+    // The same identity as a JWT, which is what the entity API reads. The SDK
+    // sends it as a bearer header, where a body field cannot reach; the
+    // session token stays because every ported function still expects it.
+    parsed.put("access_token", jwt.issue(email, name, uid));
     return parsed;
   }
 

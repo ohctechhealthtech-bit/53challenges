@@ -9,6 +9,8 @@
 #
 # PART A is read-only and creates nothing.
 # PART B creates real data and is skipped unless you pass --write.
+# PART C checks the login path the site actually uses.
+# PART D checks the entity API, which nginx does not yet route here.
 #
 # Why this exists: every write path in the Java API was deployed without ever
 # processing real input. Boot tests prove the app starts; only this proves it
@@ -188,6 +190,8 @@ fi
 
 # ─────────────────────────────── sign in ───────────────────────────────
 TOKEN=""
+# Set by PART C and read by PART D, so it must exist under set -u either way.
+JWT=""
 if [ -n "$EMAIL" ] && [ -n "$PASSWORD" ]; then
   head2 "Signing in as $EMAIL"
   payload=$(printf '{"email":"%s","password":"%s"}' "$EMAIL" "$PASSWORD")
@@ -260,6 +264,24 @@ if [ -n "$EMAIL" ] && [ -n "$PASSWORD" ]; then
       red "the token is not in the expected format: $(printf '%s' "$ST" | head -c 40)..."
     fi
 
+
+    # The JWT the entity API reads. Minted by the same login, because the SDK
+    # sends a bearer header and a GET carries no body for a session token to
+    # travel in. Without it a signed-in user is anonymous to every entity route.
+    JWT=$(printf '%s' "$b" | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+    if printf '%s' "$JWT" | grep -qE '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'; then
+      green "login also issued a JWT for the entity API"
+    else
+      red "login issued no usable access_token — entity reads will be anonymous"
+    fi
+
+    # Sessions created before the JWT existed must be able to trade up, or
+    # every currently signed-in browser silently loses its entity access.
+    r=$(call challengeApi "$(printf '{"action":"exchange_token","session_token":"%s"}' "$ST")")
+    expect "an existing session exchanges for a JWT" 200 "$(status "$r")" "$(body "$r")"
+
+    r=$(call challengeApi '{"action":"exchange_token","session_token":"forged.token"}')
+    expect "a forged session cannot exchange for a JWT" 401 "$(status "$r")" "$(body "$r")"
     # The real proof: a function must accept the token that login just minted.
     r=$(call myEntries "$(printf '{"session_token":"%s"}' "$ST")")
     expect "a function accepts the minted session_token" 200 "$(status "$r")" "$(body "$r")"
@@ -282,6 +304,103 @@ if [ -n "$EMAIL" ] && [ -n "$PASSWORD" ]; then
   expect "categories resolve" 200 "$(status "$r")" "$(body "$r")"
 fi
 
+
+# ─────────────────── PART D — the entity API ───────────────────
+# The 98 entities are still served by Base44: nginx sends /entities/ upstream.
+# These checks therefore talk to the Java app DIRECTLY, so its behaviour can be
+# proved BEFORE any real traffic is pointed at it. After the nginx change, run
+# with ENTITY_HOST="$HOST" to prove the same things through the proxy.
+#
+# The stake here is quiet failure. An unauthenticated caller is not refused —
+# it is narrowed to the rows it may see, which for most entities is none. So a
+# broken credential does not look like an error; it looks like an empty site.
+ENTITY_HOST="${ENTITY_HOST:-http://127.0.0.1:8081}"
+EN="$ENTITY_HOST/api/apps/$APP/entities"
+
+head2 "PART D — the entity API (direct at $ENTITY_HOST)"
+
+ent() {
+  local path="$1" auth="${2:-}"
+  if [ -n "$auth" ]; then
+    curl -s --compressed -m 30 -w '\n%{http_code}' "$EN/$path" \
+      -H "Authorization: Bearer $auth"
+  else
+    curl -s --compressed -m 30 -w '\n%{http_code}' "$EN/$path"
+  fi
+}
+
+r=$(ent "SiteSetting")
+if [ "$(status "$r")" = "000" ]; then
+  info "PART D SKIPPED: no app at $ENTITY_HOST (run this on the server, or set ENTITY_HOST)"
+else
+  expect "a public entity reads without signing in" 200 "$(status "$r")" "$(body "$r")"
+
+  # Fails closed: an entity with no policy entry must not be reachable at all,
+  # so a table added later is never exposed by having been forgotten.
+  r=$(ent "User")
+  s=$(status "$r")
+  if [ "$s" = "404" ] || [ "$s" = "403" ]; then
+    green "an unlisted entity is refused ($s)"
+  else
+    red "SECURITY: unlisted entity 'User' returned $s"
+    info "$(body "$r" | head -c 200)"
+  fi
+
+  r=$(ent "NotAnEntity")
+  expect "an unknown entity is 404" 404 "$(status "$r")" "$(body "$r")"
+
+  # Admin-only reads answer 200 with an empty array rather than 403, so the
+  # body is what matters — a non-empty one here is a real data leak.
+  for e in PrizeLedger PrizePayout VoteAuditLog JudgingAuditLog; do
+    r=$(ent "$e")
+    b=$(body "$r")
+    if [ "$(status "$r")" = "200" ] && [ "$(printf '%s' "$b" | tr -d ' \n')" = "[]" ]; then
+      green "$e is empty to an anonymous caller"
+    else
+      red "SECURITY: $e returned rows to an anonymous caller"
+      info "$(printf '%s' "$b" | head -c 200)"
+    fi
+  done
+
+  # Writes are refused outright, unlike reads.
+  r=$(curl -s --compressed -m 30 -w '\n%{http_code}' -X POST "$EN/SiteSetting" \
+    -H 'Content-Type: application/json' -d '{"key":"smoke_test","value":"x"}')
+  expect "an anonymous create is refused" 401 "$(status "$r")" "$(body "$r")"
+
+  r=$(curl -s --compressed -m 30 -w '\n%{http_code}' -X DELETE "$EN/SiteSetting/does-not-exist")
+  s=$(status "$r")
+  if [ "$s" = "401" ] || [ "$s" = "404" ]; then
+    green "an anonymous delete is refused ($s)"
+  else
+    red "SECURITY: anonymous delete returned $s"
+  fi
+
+  # A rejected credential must leave the caller anonymous, never authenticated.
+  r=$(ent "PrizeLedger" "not.a.valid.jwt")
+  b=$(body "$r")
+  if [ "$(printf '%s' "$b" | tr -d ' \n')" = "[]" ]; then
+    green "a garbage bearer token grants nothing"
+  else
+    red "SECURITY: a garbage bearer token returned rows"
+  fi
+
+  # With a real JWT the caller should stop being anonymous. What that unlocks
+  # depends on the account, so this reports rather than fails — except for the
+  # public entity, which must keep working for a signed-in caller too.
+  if [ -n "$JWT" ]; then
+    r=$(ent "SiteSetting" "$JWT")
+    expect "a signed-in caller still reads a public entity" 200 "$(status "$r")" "$(body "$r")"
+
+    r=$(ent "PrizeLedger" "$JWT")
+    if [ "$(printf '%s' "$(body "$r")" | tr -d ' \n')" = "[]" ]; then
+      info "PrizeLedger is empty for this account — expected unless it is an admin"
+    else
+      green "an admin JWT reads an admin-only entity"
+    fi
+  else
+    info "no JWT available — pass credentials to check authenticated entity reads"
+  fi
+fi
 # ─────────────────────────────── PART B ───────────────────────────────
 if [ "$WRITE" = "1" ] && [ -n "$TOKEN" ]; then
   head2 "PART B — writes (creates real data)"

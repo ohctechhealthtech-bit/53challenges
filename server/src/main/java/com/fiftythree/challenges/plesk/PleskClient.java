@@ -6,9 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -93,6 +91,11 @@ public class PleskClient {
     return baseDomain;
   }
 
+  /**
+   * The panel admin login. Reported by the diagnostic so an operator can see
+   * which account the key belongs to; the REST calls themselves authenticate
+   * with the API key header, not with this.
+   */
   public String adminUser() {
     return adminUser;
   }
@@ -146,7 +149,7 @@ public class PleskClient {
       HttpRequest.Builder builder = HttpRequest.newBuilder(
               URI.create(baseUrl + "/api/v2" + path))
           .timeout(TIMEOUT)
-          .header("Authorization", basicAuth())
+          .header("X-API-Key", apiKey)
           .header("Content-Type", "application/json")
           .header("Accept", "application/json");
 
@@ -218,7 +221,7 @@ public class PleskClient {
       HttpRequest request = HttpRequest.newBuilder(
               URI.create(baseUrl + "/api/v2/cli/" + tool + "/call"))
           .timeout(TIMEOUT)
-          .header("Authorization", basicAuth())
+          .header("X-API-Key", apiKey)
           .header("Content-Type", "application/json")
           .header("Accept", "application/json")
           .POST(HttpRequest.BodyPublishers.ofString(
@@ -299,12 +302,6 @@ public class PleskClient {
   public record Domain(String id, String wwwRoot) {}
 
   // -------------------------------------------------------------- helpers
-
-  private String basicAuth() {
-    String credentials = adminUser + ":" + apiKey;
-    return "Basic " + Base64.getEncoder()
-        .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
-  }
 
   private static String truncate(String body) {
     if (body == null) {

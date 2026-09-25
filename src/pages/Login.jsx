@@ -8,7 +8,7 @@ import GoogleIcon from "@/components/GoogleIcon";
 import Logo from "@/components/Logo";
 import { safeReturnTo } from "@/lib/authReturnTo";
 import { challengeApi } from "@/lib/challengeApi";
-import { setSessionToken } from "@/lib/customSession";
+import { setSessionToken, setAccessToken } from "@/lib/customSession";
 import { useAuth } from "@/lib/AuthContext";
 import { ensureGis, requestGoogleAccessToken } from "@/lib/googleSignIn";
 
@@ -50,6 +50,9 @@ export default function Login() {
     }
     if (res?.success && res?.user) {
       setSessionToken(res.session_token);
+      // Read by the SDK on the next page load and sent as a bearer header, which
+      // is the only credential the entity API can see.
+      setAccessToken(res.access_token);
       setChallengeApiSession(res.user);
       // Hard redirect so the AuthProvider re-initializes and picks up the
       // new Challenge-API session from storage. Default to the user's
