@@ -83,6 +83,9 @@ app:
     # the migration, wrong now. Defaults to the local app, matching what the
     # apex domain already does.
     api-proxy-target: ${PLESK_API_PROXY_TARGET:http://127.0.0.1:8081}
+    # Where a subdomain sends the API calls this app has not ported. Removing
+    # this once nothing is left on Base44 is the last step of the migration.
+    api-fallback-target: ${PLESK_API_FALLBACK_TARGET:https://base44.app}
     default-ip: ${PLESK_DEFAULT_IP:}
     service-plan: ${PLESK_SERVICE_PLAN:}
     parent-webspace: ${PLESK_PARENT_WEBSPACE:}

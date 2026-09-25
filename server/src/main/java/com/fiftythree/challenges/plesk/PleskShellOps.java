@@ -49,14 +49,19 @@ public class PleskShellOps {
 
   private final PleskClient plesk;
   private final String apiProxyTarget;
+  private final String apiFallbackTarget;
 
   public PleskShellOps(
       PleskClient plesk,
-      @Value("${app.plesk.api-proxy-target:http://127.0.0.1:8081}") String apiProxyTarget) {
+      @Value("${app.plesk.api-proxy-target:http://127.0.0.1:8081}") String apiProxyTarget,
+      @Value("${app.plesk.api-fallback-target:https://base44.app}") String apiFallbackTarget) {
     this.plesk = plesk;
     this.apiProxyTarget = apiProxyTarget == null || apiProxyTarget.isBlank()
         ? "http://127.0.0.1:8081"
         : apiProxyTarget.trim();
+    this.apiFallbackTarget = apiFallbackTarget == null || apiFallbackTarget.isBlank()
+        ? "https://base44.app"
+        : apiFallbackTarget.trim();
   }
 
   /** The outcome of a shell-backed operation. */
@@ -110,6 +115,48 @@ public class PleskShellOps {
 
   // ------------------------------------------------------- reverse proxy
 
+
+  /**
+   * The nginx directives a challenge subdomain needs.
+   *
+   * <p>Mirrors the apex: this app serves what it has ported, and everything
+   * else still reaches Base44. Sending all of {@code /api/} here would break
+   * the SDK's platform calls — {@code /api/apps/public/...} and
+   * {@code /api/apps/auth/...} have no route in this application and would
+   * 404.
+   *
+   * <p>Exactly one {@code location /api/} block, deliberately. Two in the same
+   * server context is an nginx configuration error, and the reconfigure that
+   * follows a provision fails outright rather than degrading.
+   *
+   * <p>The app id is a wildcard rather than pinned, so a subdomain provisioned
+   * before the app id changes does not silently stop working.
+   */
+  String proxyDirectives() {
+    return """
+        location ~ ^/api/apps/[^/]+/(functions|entities)/ {
+            proxy_pass %s;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_http_version 1.1;
+            proxy_redirect off;
+            proxy_read_timeout 90s;
+        }
+
+        location /api/ {
+            proxy_pass %s;
+            proxy_set_header Host base44.app;
+            proxy_ssl_server_name on;
+            proxy_ssl_name base44.app;
+            proxy_ssl_protocols TLSv1.2 TLSv1.3;
+            proxy_http_version 1.1;
+            proxy_redirect off;
+            proxy_read_timeout 60s;
+        }
+        """.formatted(apiProxyTarget, apiFallbackTarget);
+  }
   /**
    * Writes the {@code /api/} reverse-proxy include for a subdomain.
    *
@@ -135,18 +182,7 @@ public class PleskShellOps {
       return ShellResult.failed("Awaiting server-side nginx sync");
     }
 
-    String directives = """
-        location /api/ {
-            proxy_pass %s;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_http_version 1.1;
-            proxy_redirect off;
-            proxy_read_timeout 60s;
-        }
-        """.formatted(apiProxyTarget);
+    String directives = proxyDirectives();
 
     String confPath = "/var/www/vhosts/system/" + fullDomain + "/conf/vhost_nginx.conf";
     // Base64 so the directives survive shell quoting intact — they contain

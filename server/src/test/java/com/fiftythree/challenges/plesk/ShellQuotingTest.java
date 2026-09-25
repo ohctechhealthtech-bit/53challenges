@@ -47,7 +47,7 @@ class ShellQuotingTest {
     when(plesk.post(anyString(), any()))
         .thenReturn(new PleskClient.Result(true, 200, stdout, null));
 
-    shell = new PleskShellOps(plesk, "http://127.0.0.1:8081");
+    shell = new PleskShellOps(plesk, "http://127.0.0.1:8081", "https://base44.app");
   }
 
   @Test
