@@ -143,11 +143,38 @@ public class ProvisionDomainController {
       fullDomain = validation.normalized();
     }
 
+    // The admin UI posts PEM text; a URL is the pre-migration form, kept so
+    // existing records still provision. The key reaches this server and goes
+    // straight to private storage — it is never uploaded anywhere that serves
+    // files.
+    String certificateText = str(request.get("ssl_certificate"));
+    String privateKeyText = str(request.get("ssl_private_key"));
     String certUrl = str(request.get("ssl_cert_url"));
     String keyUrl = str(request.get("ssl_key_url"));
-    if (!isSubdomain && (certUrl == null || keyUrl == null)) {
+    if (!isSubdomain
+        && (certificateText == null || privateKeyText == null)
+        && (certUrl == null || keyUrl == null)) {
       return error("VALIDATION_ERROR",
           "SSL certificate and private key are required for full domains", 400);
+    }
+
+    // Stored before anything is provisioned, so a later failure leaves the
+    // material on disk to retry with rather than losing it with the request.
+    String certificateRef = null;
+    String privateKeyRef = null;
+    if (certificateText != null) {
+      if (!files.isConfigured()) {
+        return error("CONFIGURATION_ERROR",
+            "Private file storage is not configured. Set PRIVATE_FILES_DIR.", 500);
+      }
+      try {
+        certificateRef = files.write("cert-" + fullDomain, certificateText);
+        if (privateKeyText != null) {
+          privateKeyRef = files.write("key-" + fullDomain, privateKeyText);
+        }
+      } catch (PrivateFileStore.StorageException e) {
+        return error("STORAGE_ERROR", e.getMessage(), 500);
+      }
     }
 
     String challengeName = "";
@@ -205,10 +232,13 @@ public class ProvisionDomainController {
     record.setHostingMode(isSubdomain ? "separate_subdomain" : "full_domain");
     record.setGitLocation(orEmpty(gitLocation));
     record.setGitDeploymentStatus(gitLocation == null ? "skipped" : "pending");
-    record.setSslCertUrl(orEmpty(certUrl));
-    record.setSslKeyUrl(orEmpty(keyUrl));
+    // A private-storage reference when the material was posted, otherwise the
+    // legacy URL. Either way this column is server-side only.
+    record.setSslCertUrl(orEmpty(certificateRef != null ? certificateRef : certUrl));
+    record.setSslKeyUrl(orEmpty(privateKeyRef != null ? privateKeyRef : keyUrl));
     record.setSslStatus("pending");
-    record.setSslSource(isSubdomain && certUrl == null ? "admin_default" : "manual");
+    record.setSslSource(
+        isSubdomain && certUrl == null && certificateRef == null ? "admin_default" : "manual");
     record.setCreatedDate(now);
     record.setUpdatedDate(now);
     record.setIsSample(false);
@@ -260,7 +290,7 @@ public class ProvisionDomainController {
     domains.save(record);
 
     PleskShellOps.ShellResult ssl = installCertificate(
-        record, defaultSsl, certUrl, keyUrl, fullDomain, siteId);
+        defaultSsl, certificateText, privateKeyText, certUrl, keyUrl, fullDomain, siteId);
     record.setSslStatus(ssl.success() ? "installed" : "failed");
     if (!ssl.success()) {
       // Not fatal. The domain exists and serves; the certificate can be
@@ -291,21 +321,29 @@ public class ProvisionDomainController {
   /**
    * Installs whichever certificate applies.
    *
-   * <p>A subdomain uses the stored default unless the request supplied its
-   * own; a full domain must supply one. The default is read from private
-   * storage rather than fetched over HTTP, which is both faster and avoids a
-   * signed-URL round trip the original needed only because Base44 held the
-   * file remotely.
+   * <p>Three sources, in order of preference: material posted with the request
+   * (used directly — it is already on disk in private storage, and re-reading
+   * it would only add a failure mode), the stored default for a subdomain, or
+   * a legacy URL fetched over HTTPS.
+   *
+   * <p>The default is read from private storage rather than fetched over HTTP,
+   * which is both faster and avoids a signed-URL round trip the original
+   * needed only because Base44 held the file remotely.
    */
   private PleskShellOps.ShellResult installCertificate(
-      ChallengeDomainEntity record,
       AdminSslConfigurationEntity defaultSsl,
+      String certificateText,
+      String privateKeyText,
       String certUrl,
       String keyUrl,
       String fullDomain,
       String siteId) {
 
     try {
+      if (certificateText != null) {
+        return shell.installCertificate(fullDomain, certificateText,
+            privateKeyText == null ? "" : privateKeyText, siteId);
+      }
       if (certUrl == null && defaultSsl != null) {
         String certificate = files.read(defaultSsl.getCertificateFileReference());
         String key = files.read(defaultSsl.getPrivateKeyFileReference());
@@ -317,6 +355,7 @@ public class ProvisionDomainController {
       return shell.installCertificate(fullDomain,
           fetchPem(certUrl), keyUrl == null ? "" : fetchPem(keyUrl), siteId);
     } catch (Exception e) {
+      // The exception, never the material.
       log.warn("Certificate install for {} failed: {}", fullDomain, e.toString());
       return PleskShellOps.ShellResult.failed(
           e.getMessage() == null ? "Could not install the certificate" : e.getMessage());

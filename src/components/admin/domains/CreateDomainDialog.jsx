@@ -109,30 +109,32 @@ export default function CreateDomainDialog({ open, onOpenChange, challenges, bas
     setProgressStep(0);
 
     try {
-      // Upload manual SSL files for full domains.
-      let sslCertUrl = '';
-      let sslKeyUrl = '';
+      // SSL material for full domains. The files are read here and posted as
+      // text: they go to our own backend, which writes them to private storage
+      // outside any document root.
+      //
+      // They were previously sent through the platform's UploadFile, which put
+      // them on a PUBLIC file path — every private key uploaded that way was
+      // downloadable by anyone holding the URL.
+      let sslCertificate = '';
+      let sslPrivateKey = '';
       if (domainType === 'full_domain') {
         if (!sslCertFile) { toast.error('SSL certificate file is required'); setSaving(false); return; }
         if (!sslKeyFile && !certContainsKey) { toast.error('SSL private key file is required (or upload a PEM containing both certificate and key)'); setSaving(false); return; }
 
-        // Validate PEM markers before upload.
         const certText = await sslCertFile.text();
         const certV = validatePemCert(certText);
         if (!certV.valid) { toast.error(`Certificate: ${certV.error}`); setSaving(false); return; }
+        sslCertificate = certText;
 
         if (sslKeyFile) {
           const keyText = await sslKeyFile.text();
           const keyV = validatePemKey(keyText);
           if (!keyV.valid) { toast.error(`Private key: ${keyV.error}`); setSaving(false); return; }
-        }
-
-        setProgressStep(1);
-        const certUp = await base44.integrations.Core.UploadFile({ file: sslCertFile });
-        sslCertUrl = certUp?.file_url || '';
-        if (sslKeyFile) {
-          const keyUp = await base44.integrations.Core.UploadFile({ file: sslKeyFile });
-          sslKeyUrl = keyUp?.file_url || '';
+          sslPrivateKey = keyText;
+        } else {
+          // A combined PEM carries the key in the same file.
+          sslPrivateKey = certText;
         }
       }
 
@@ -145,8 +147,11 @@ export default function CreateDomainDialog({ open, onOpenChange, challenges, bas
         full_domain: domainType === 'full_domain' ? fullDomain : '',
         git_location: gitLocation.trim(),
         ssl_source: domainType === 'subdomain' ? 'admin_default' : 'manual',
-        manual_ssl_cert_file_id: sslCertUrl,
-        manual_ssl_key_file_id: sslKeyUrl,
+        // Field names the backend actually reads. The previous
+        // manual_ssl_*_file_id pair matched nothing on the server, so manual
+        // SSL failed validation after the upload had already happened.
+        ssl_certificate: sslCertificate,
+        ssl_private_key: sslPrivateKey,
         session_token: getSessionToken(),
       });
 

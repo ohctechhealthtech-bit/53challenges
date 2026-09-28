@@ -67,6 +67,7 @@ public class ChallengeSubdomainController {
   private final ChallengeDomainRepository domains;
   private final ChallengeRepository challenges;
   private final CallerResolver caller;
+  private final PrivateFileStore files;
 
   public ChallengeSubdomainController(
       PleskClient plesk,
@@ -74,13 +75,15 @@ public class ChallengeSubdomainController {
       PleskShellOps shell,
       ChallengeDomainRepository domains,
       ChallengeRepository challenges,
-      CallerResolver caller) {
+      CallerResolver caller,
+      PrivateFileStore files) {
     this.plesk = plesk;
     this.provisioning = provisioning;
     this.shell = shell;
     this.domains = domains;
     this.challenges = challenges;
     this.caller = caller;
+    this.files = files;
   }
 
   // -------------------------------------------------------------- create
@@ -165,9 +168,15 @@ public class ChallengeSubdomainController {
     record.setGitLocation(orEmpty(str(request.get("git_location"))));
     record.setGitDeploymentStatus(
         str(request.get("git_location")) == null ? "skipped" : "pending");
+    // Only a legacy URL is recorded here. PEM text posted by the admin UI is
+    // written to private storage inside installCertificate, and the reference
+    // it returns replaces these — the key material must not be held in the
+    // request any longer than it takes to store it.
     record.setSslCertUrl(orEmpty(str(request.get("ssl_cert_url"))));
     record.setSslKeyUrl(orEmpty(str(request.get("ssl_key_url"))));
-    record.setSslStatus(str(request.get("ssl_cert_url")) == null ? "skipped" : "pending");
+    record.setSslStatus(
+        str(request.get("ssl_cert_url")) == null && str(request.get("ssl_certificate")) == null
+            ? "skipped" : "pending");
     record.setCreatedDate(now);
     record.setUpdatedDate(now);
     record.setIsSample(false);
@@ -207,10 +216,12 @@ public class ChallengeSubdomainController {
       }
     }
 
-    String certUrl = str(request.get("ssl_cert_url"));
-    if (certUrl != null) {
-      PleskShellOps.ShellResult installed = installCertificate(
-          certUrl, str(request.get("ssl_key_url")), fullDomain, result.siteId());
+    // Either PEM text (the admin UI posts the file contents) or a legacy URL.
+    boolean hasCertificate = str(request.get("ssl_certificate")) != null
+        || str(request.get("ssl_cert_url")) != null;
+    if (hasCertificate) {
+      PleskShellOps.ShellResult installed =
+          installCertificate(record, request, fullDomain, result.siteId());
       record.setSslStatus(installed.success() ? "installed" : "failed");
       if (!installed.success()) {
         record.setErrorMessage(installed.error());
@@ -230,26 +241,62 @@ public class ChallengeSubdomainController {
   }
 
   /**
-   * Downloads the certificate material and installs it.
+   * Installs the certificate, from PEM text or from a URL.
    *
-   * <p>The URLs are supplied by an admin and fetched by a server sitting
-   * inside the network, so only {@code https://} is accepted — a
-   * {@code file://} or {@code http://localhost} URL here would read local
-   * files or reach internal services that are not otherwise exposed.
+   * <p><b>Text is the supported path.</b> The admin UI reads the files in the
+   * browser and posts their contents, so the private key travels once, to this
+   * server, and is written to {@link PrivateFileStore} — owner-read-only,
+   * outside any document root. It is never uploaded anywhere that serves
+   * files.
+   *
+   * <p>The URL path remains for records created before that change, whose keys
+   * are already stored elsewhere. Only {@code https://} is accepted: this
+   * server sits inside the network, and a {@code file://} or
+   * {@code http://localhost} URL here would read local files or reach internal
+   * services that are not otherwise exposed.
    */
   private PleskShellOps.ShellResult installCertificate(
-      String certUrl, String keyUrl, String fullDomain, String siteId) {
+      ChallengeDomainEntity record, Map<String, Object> request,
+      String fullDomain, String siteId) {
+
+    String certificateText = str(request.get("ssl_certificate"));
+    String keyText = str(request.get("ssl_private_key"));
 
     try {
-      String certificate = fetchPem(certUrl);
-      String key = keyUrl == null ? "" : fetchPem(keyUrl);
+      String certificate;
+      String key;
+
+      if (certificateText != null) {
+        certificate = certificateText;
+        key = keyText == null ? "" : keyText;
+
+        if (!files.isConfigured()) {
+          return PleskShellOps.ShellResult.failed(
+              "Private file storage is not configured. Set PRIVATE_FILES_DIR.");
+        }
+        // Stored before installing: if Plesk rejects the certificate, the
+        // material is still here to retry with rather than lost with the
+        // request.
+        record.setSslCertUrl(files.write("cert-" + fullDomain, certificate));
+        if (!key.isBlank()) {
+          record.setSslKeyUrl(files.write("key-" + fullDomain, key));
+        }
+      } else {
+        certificate = fetchPem(str(request.get("ssl_cert_url")));
+        String keyUrl = str(request.get("ssl_key_url"));
+        key = keyUrl == null ? "" : fetchPem(keyUrl);
+      }
+
       return shell.installCertificate(fullDomain, certificate, key, siteId);
+    } catch (PrivateFileStore.StorageException e) {
+      return PleskShellOps.ShellResult.failed(e.getMessage());
     } catch (IllegalArgumentException e) {
       return PleskShellOps.ShellResult.failed(e.getMessage());
     } catch (Exception e) {
-      log.warn("Could not download certificate material for {}: {}", fullDomain, e.toString());
+      // The exception, never the material it was handling.
+      log.warn("Could not prepare certificate material for {}: {}", fullDomain, e.toString());
       return PleskShellOps.ShellResult.failed(
-          "Could not download the SSL certificate from the supplied URL.");
+          "Could not read the SSL certificate that was supplied.");
     }
   }
 
@@ -352,7 +399,13 @@ public class ChallengeSubdomainController {
     out.put("hosting_mode", d.getHostingMode());
     out.put("git_location", d.getGitLocation());
     out.put("git_deployment_status", d.getGitDeploymentStatus());
-    out.put("ssl_cert_url", d.getSslCertUrl());
+    // A stored certificate is reported as present, not located. Since the
+    // material moved into private storage this field holds a server path, and
+    // handing that to a browser tells an attacker exactly where the key lives.
+    String certificate = d.getSslCertUrl();
+    out.put("ssl_cert_url",
+        certificate != null && certificate.startsWith("https://") ? certificate : "");
+    out.put("ssl_certificate_stored", certificate != null && !certificate.isBlank());
     out.put("ssl_status", d.getSslStatus());
     out.put("plesk_site_id", d.getPleskSiteId());
     out.put("document_root", d.getDocumentRoot());
