@@ -2,11 +2,17 @@
 import { base44 } from '@/api/base44Client';
 
 // Write an immutable, timestamped audit entry. Every scoring action calls this.
+//
+// `actor` is recorded as given and left empty when it is not known. It used to
+// default to 'system', which put a name on the record that nobody had earned —
+// the same fabrication the vote audit log had. The entity API stamps
+// createdById from the session independently of this field, so there is always
+// a trustworthy answer to who wrote the row; this one should not contradict it.
 export async function audit(panelId, actor, action, detail = '') {
   try {
     await base44.entities.JudgingAuditLog.create({
       panel_id: panelId || '',
-      actor: actor || 'system',
+      actor: actor || '',
       action,
       detail,
       at: new Date().toISOString(),
