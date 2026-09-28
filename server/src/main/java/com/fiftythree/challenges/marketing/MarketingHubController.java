@@ -85,6 +85,7 @@ public class MarketingHubController {
   private final OrganisationQueryRepository organisations;
   private final SponsorQueryRepository sponsors;
   private final PartnerInquiryRepository inquiries;
+  private final PartnerProspectQueryRepository prospects;
   private final EntryQueryRepository entries;
   private final CategoryRepository categories;
   private final UserRepository users;
@@ -100,6 +101,7 @@ public class MarketingHubController {
       OrganisationQueryRepository organisations,
       SponsorQueryRepository sponsors,
       PartnerInquiryRepository inquiries,
+      PartnerProspectQueryRepository prospects,
       EntryQueryRepository entries,
       CategoryRepository categories,
       UserRepository users,
@@ -113,6 +115,7 @@ public class MarketingHubController {
     this.organisations = organisations;
     this.sponsors = sponsors;
     this.inquiries = inquiries;
+    this.prospects = prospects;
     this.entries = entries;
     this.categories = categories;
     this.users = users;
@@ -613,6 +616,17 @@ public class MarketingHubController {
       return ResponseEntity.status(400).body(Map.of("error", "Prospect name required"));
     }
     String kind = orEmpty(str(p.get("kind"))).toLowerCase(Locale.ROOT);
+
+    // The client disables the button after one click, which a refresh or a
+    // second tab undoes. Returning the existing row rather than refusing:
+    // from the operator's side "add to outreach" succeeded either way, and
+    // the pipeline should not grow a duplicate for saying so twice.
+    List<PartnerInquiryEntity> existing =
+        prospects.findProspectByName(name.toLowerCase(Locale.ROOT), "AI partner finder");
+    if (!existing.isEmpty()) {
+      return ResponseEntity.ok(Map.of(
+          "ok", true, "prospect", existing.get(0).getId(), "already_saved", true));
+    }
 
     Instant now = Instant.now();
     PartnerInquiryEntity item = new PartnerInquiryEntity();

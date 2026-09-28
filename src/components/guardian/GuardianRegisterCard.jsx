@@ -12,13 +12,24 @@ export default function GuardianRegisterCard({ guardian, onSaved }) {
     address: guardian?.address || '',
   });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
     setSaving(true);
+    setError('');
     try {
-      await base44.functions.invoke('guardianPortal', { action: 'register', ...form });
+      const res = await base44.functions.invoke('guardianPortal', { action: 'register', ...form });
+      if (res?.data?.error) {
+        setError(res.data.error);
+        return;
+      }
       onSaved?.();
+    } catch (e) {
+      // There was no catch here at all: a failed registration stopped the
+      // spinner and said nothing, so a parent believed they had registered
+      // while their child's entry stayed blocked waiting for them.
+      setError(e?.response?.data?.error || 'Could not save your details. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -39,6 +50,7 @@ export default function GuardianRegisterCard({ guardian, onSaved }) {
         {saving && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
         {guardian ? 'Update details' : 'Register'}
       </Button>
+      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </div>
   );
 }
