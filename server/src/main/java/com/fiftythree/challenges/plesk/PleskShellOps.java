@@ -116,6 +116,24 @@ public class PleskShellOps {
   // ------------------------------------------------------- reverse proxy
 
 
+
+  /**
+   * The host name nginx must present to the fallback upstream.
+   *
+   * <p>Derived from the configured target rather than written alongside it:
+   * these were a hardcoded {@code base44.app} while the target was
+   * configurable, so pointing the fallback elsewhere produced a vhost that
+   * connected to the new host and then asked it for base44.app — wrong Host
+   * header, wrong SNI, and a TLS or routing failure at the far end.
+   */
+  private String fallbackHost() {
+    try {
+      String host = java.net.URI.create(apiFallbackTarget).getHost();
+      return host == null || host.isBlank() ? "base44.app" : host;
+    } catch (Exception e) {
+      return "base44.app";
+    }
+  }
   /**
    * The nginx directives a challenge subdomain needs.
    *
@@ -147,15 +165,16 @@ public class PleskShellOps {
 
         location /api/ {
             proxy_pass %s;
-            proxy_set_header Host base44.app;
+            proxy_set_header Host %s;
             proxy_ssl_server_name on;
-            proxy_ssl_name base44.app;
+            proxy_ssl_name %s;
             proxy_ssl_protocols TLSv1.2 TLSv1.3;
             proxy_http_version 1.1;
             proxy_redirect off;
             proxy_read_timeout 60s;
         }
-        """.formatted(apiProxyTarget, apiFallbackTarget);
+        """.formatted(apiProxyTarget, apiFallbackTarget,
+        fallbackHost(), fallbackHost());
   }
   /**
    * Writes the {@code /api/} reverse-proxy include for a subdomain.

@@ -84,4 +84,28 @@ class ProxyDirectivesTest {
     assertTrue(directives.contains("proxy_pass http://127.0.0.1:8081;"));
     assertTrue(directives.contains("proxy_pass https://base44.app;"));
   }
+
+  /**
+   * The Host header and SNI must follow the configured target. They were
+   * hardcoded to base44.app while the target was configurable, so pointing the
+   * fallback elsewhere produced a vhost that connected to the new host and
+   * then asked it for base44.app — wrong Host, wrong SNI, failure at the far
+   * end.
+   */
+  @Test
+  void theFallbackHostFollowsTheConfiguredTarget() {
+    String directives = ops("http://127.0.0.1:8081", "https://upstream.example").proxyDirectives();
+
+    assertTrue(directives.contains("proxy_set_header Host upstream.example;"));
+    assertTrue(directives.contains("proxy_ssl_name upstream.example;"));
+    assertTrue(!directives.contains("base44.app"), "no trace of the old host should remain");
+  }
+
+  @Test
+  void aMalformedFallbackTargetDoesNotProduceABrokenHost() {
+    String directives = ops("http://127.0.0.1:8081", "not a url").proxyDirectives();
+
+    // A known host rather than an empty directive, which nginx will not load.
+    assertTrue(directives.contains("proxy_set_header Host base44.app;"));
+  }
 }

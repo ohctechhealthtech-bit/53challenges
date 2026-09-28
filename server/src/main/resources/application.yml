@@ -125,6 +125,13 @@ app:
     # Passwords live in the upstream Challenge API; login is delegated to it.
     base-url: ${CHALLENGE_API_BASE_URL}
     api-key: ${CHALLENGE_API_KEY}
+  base44:
+    # The app id this deployment serves, for the fallback to recognise its own.
+    app-id: ${BASE44_APP_ID:}
+    # Where a function with no local route is forwarded. Every one of the 65 is
+    # now ported, so this is a safety net rather than a path in use — and
+    # pointing it elsewhere, or at nothing, is a setting rather than a rebuild.
+    fallback-url: ${BASE44_FALLBACK_URL:https://base44.app}
 
 logging:
   level:

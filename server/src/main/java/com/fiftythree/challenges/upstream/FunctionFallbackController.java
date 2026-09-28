@@ -47,8 +47,6 @@ public class FunctionFallbackController {
 
   private static final Logger log = LoggerFactory.getLogger(FunctionFallbackController.class);
 
-  private static final String BASE44 = "https://base44.app";
-
   /**
    * Headers that belong to this hop and must not be copied onward: the
    * connection-level ones, and the length and encoding, which the client
@@ -72,10 +70,25 @@ public class FunctionFallbackController {
           .followRedirects(HttpClient.Redirect.NEVER)
           .build();
 
+  /**
+   * Where an unported function is forwarded.
+   *
+   * <p>Configurable rather than fixed, so that decommissioning Base44 is a
+   * setting and not a rebuild. Every function now has a local route, which
+   * makes this a safety net: if it ever fires, the log line below names the
+   * function that slipped through.
+   */
+  private final String fallbackBase;
+
   private final String appId;
 
-  public FunctionFallbackController(@Value("${app.base44.app-id:}") String appId) {
+  public FunctionFallbackController(
+      @Value("${app.base44.app-id:}") String appId,
+      @Value("${app.base44.fallback-url:https://base44.app}") String fallbackBase) {
     this.appId = appId;
+    this.fallbackBase = fallbackBase == null || fallbackBase.isBlank()
+        ? "https://base44.app"
+        : fallbackBase.trim().replaceAll("/+$", "");
   }
 
   @RequestMapping(
@@ -88,7 +101,7 @@ public class FunctionFallbackController {
       HttpServletRequest request) {
 
     String query = request.getQueryString();
-    String target = BASE44 + "/api/apps/" + pathAppId + "/functions/" + function
+    String target = fallbackBase + "/api/apps/" + pathAppId + "/functions/" + function
         + (query == null || query.isBlank() ? "" : "?" + query);
 
     try {
