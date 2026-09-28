@@ -34,6 +34,35 @@ const getAppParamValue = (paramName, { defaultValue = undefined, removeFromUrl =
 	return null;
 }
 
+
+// A credential is never accepted from the URL.
+//
+// Anything in ?access_token= used to be stored under base44_access_token and
+// returned as the app's token. Since our own login began issuing the JWT under
+// that key, it is what the entity API authenticates — so a crafted link would
+// have silently signed a visitor into whatever session it carried, and
+// everything they did afterwards would have landed in it.
+//
+// The parameter is still stripped from the address bar, so it does not linger
+// in history or leak through a referrer, but the value is discarded. The token
+// is read from storage, where only our login and exchange write it.
+const readAccessToken = () => {
+	if (isNode) {
+		return undefined;
+	}
+	const urlParams = new URLSearchParams(window.location.search);
+	if (urlParams.has('access_token')) {
+		urlParams.delete('access_token');
+		const query = urlParams.toString();
+		window.history.replaceState({}, document.title,
+			`${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`);
+	}
+	try {
+		return storage.getItem('base44_access_token') || null;
+	} catch {
+		return null;
+	}
+};
 const getAppParams = () => {
 	if (getAppParamValue("clear_access_token") === 'true') {
 		storage.removeItem('base44_access_token');
@@ -41,7 +70,7 @@ const getAppParams = () => {
 	}
 	return {
 		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
-		token: getAppParamValue("access_token", { removeFromUrl: true }),
+		token: readAccessToken(),
 		fromUrl: getAppParamValue("from_url", { defaultValue: window.location.href }),
 		functionsVersion: getAppParamValue("functions_version", { defaultValue: import.meta.env.VITE_BASE44_FUNCTIONS_VERSION }),
 		appBaseUrl: getAppParamValue("app_base_url", { defaultValue: import.meta.env.VITE_BASE44_APP_BASE_URL }),

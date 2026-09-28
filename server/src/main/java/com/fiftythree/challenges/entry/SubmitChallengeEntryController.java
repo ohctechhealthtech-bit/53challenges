@@ -60,6 +60,7 @@ public class SubmitChallengeEntryController {
   private final EmailVerificationService verification;
   private final LifecycleGateService gates;
   private final GuardianService guardians;
+  private final com.fiftythree.challenges.misc.AgeAttestationQueryRepository attestations;
   private final ComplianceAuditService audit;
   private final EntryFeeService fees;
   private final ChallengeApiClient upstream;
@@ -74,6 +75,7 @@ public class SubmitChallengeEntryController {
       EmailVerificationService verification,
       LifecycleGateService gates,
       GuardianService guardians,
+      com.fiftythree.challenges.misc.AgeAttestationQueryRepository attestations,
       ComplianceAuditService audit,
       EntryFeeService fees,
       ChallengeApiClient upstream,
@@ -86,6 +88,7 @@ public class SubmitChallengeEntryController {
     this.verification = verification;
     this.gates = gates;
     this.guardians = guardians;
+    this.attestations = attestations;
     this.audit = audit;
     this.fees = fees;
     this.upstream = upstream;
@@ -245,8 +248,20 @@ public class SubmitChallengeEntryController {
 
     // An entrant under 18 is a minor: guardian details are mandatory and the
     // entry is gated behind guardian approval.
+    //
+    // The attested age is checked first and independently, because everything
+    // else here comes from the request body. is_minor and derived_age are the
+    // browser's word for it, so on their own a minor could send
+    // is_minor:false and skip guardian consent entirely. The body can still
+    // make someone a minor — a stricter answer is always safe — but it can no
+    // longer make them an adult.
+    double attestedAge = attestations.findLatestByEmail(email).stream()
+        .findFirst()
+        .map(a -> a.getAgeYears() == null ? 0d : a.getAgeYears())
+        .orElse(0d);
     double derivedAge = toDouble(entry.get("derived_age"));
-    boolean isMinor = truthy(entry.get("is_minor"))
+    boolean isMinor = (attestedAge > 0 && attestedAge < ADULT_AGE)
+        || truthy(entry.get("is_minor"))
         || (derivedAge > 0 && derivedAge < ADULT_AGE)
         || CHILD_DIVISIONS.contains(division.toLowerCase());
 
