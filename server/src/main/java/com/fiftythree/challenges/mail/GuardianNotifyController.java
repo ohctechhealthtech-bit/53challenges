@@ -52,7 +52,9 @@ public class GuardianNotifyController {
       @RequestHeader(value = "Origin", required = false) String origin) {
 
     Map<String, Object> request = body == null ? Map.of() : body;
-    if (caller.email(str(request.get("session_token"))) == null) {
+    String sessionToken = str(request.get("session_token"));
+    String callerEmail = caller.email(sessionToken);
+    if (callerEmail == null) {
       return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
     }
 
@@ -65,6 +67,23 @@ public class GuardianNotifyController {
       return ResponseEntity.status(404).body(Map.of("error", "Request not found"));
     }
     GuardianApprovalRequestEntity approval = found.get();
+
+    // Being signed in was the only check here, and the request id came from
+    // the caller — so any account could name any request and have this send
+    // mail to that guardian or child. That is a spam and phishing path using
+    // your own domain, and a 404-versus-200 oracle for which entries belong
+    // to minors.
+    //
+    // A 404 rather than a 403 for an unrelated request: telling a stranger
+    // that an id exists is the same leak in a different status code.
+    String guardian = norm(approval.getGuardianEmail());
+    String child = norm(approval.getChildEmail());
+    if (!callerEmail.equals(guardian)
+        && !callerEmail.equals(child)
+        && !caller.isAdmin(sessionToken)) {
+      return ResponseEntity.status(404).body(Map.of("error", "Request not found"));
+    }
+
     String action = str(request.get("action"));
 
     return switch (action == null ? "" : action) {
@@ -151,6 +170,11 @@ public class GuardianNotifyController {
     return value == null ? "" : value;
   }
 
+
+  /** Lower-cased and trimmed, so a stored address matches however it was typed. */
+  private static String norm(String value) {
+    return value == null ? "" : value.trim().toLowerCase(java.util.Locale.ROOT);
+  }
   private static String str(Object value) {
     if (value == null) {
       return null;

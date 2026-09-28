@@ -19,4 +19,14 @@ public interface GuardianChildQueryRepository extends JpaRepository<GuardianChil
       @Param("guardianId") String guardianId,
       @Param("childEmail") String childEmail,
       Limit limit);
+
+  /**
+   * One guardian's child links, scoped in the query.
+   *
+   * <p>Replaces a {@code findAll()} that pulled every link in the database
+   * into heap before filtering to one guardian in Java.
+   */
+  @Query("select c from GuardianChildEntity c where c.guardianId = :guardianId "
+      + "order by c.createdDate desc, c.id asc")
+  List<GuardianChildEntity> findByGuardian(@Param("guardianId") String guardianId);
 }

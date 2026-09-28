@@ -93,8 +93,10 @@ public class GuardianService {
     GuardianChildEntity existing =
         children.findLink(guardian.getId(), email).stream().findFirst().orElse(null);
     if (existing != null) {
-      if (!"active".equals(nz(existing.getStatus()))) {
-        existing.setStatus("active");
+      // A revoked link is re-raised as a claim, not restored: revoking and
+      // re-adding must not be a way to skip confirmation.
+      if ("revoked".equals(nz(existing.getStatus()))) {
+        existing.setStatus("pending");
         existing.setUpdatedDate(Instant.now());
         return children.save(existing);
       }
@@ -107,7 +109,10 @@ public class GuardianService {
     link.setGuardianEmail(guardian.getEmail());
     link.setChildName(nz(childName));
     link.setChildEmail(email);
-    link.setStatus("active");
+    // A claim, not a relationship: the email came from the guardian, so this
+    // grants nothing until the child's own side confirms it. See
+    // GuardianPortalController.activeChildren.
+    link.setStatus("pending");
     link.setLinkedAt(Instant.now());
     link.setCreatedDate(Instant.now());
     link.setUpdatedDate(Instant.now());

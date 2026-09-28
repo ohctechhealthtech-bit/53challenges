@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,8 +79,7 @@ public class GuardianPortalController {
         case "link_child" -> linkChild(request, email);
         case "unlink_child" -> unlinkChild(request, email);
         case "list_requests" -> ResponseEntity.ok(
-            Map.of("requests", approvals.findAll().stream()
-                .filter(r -> email.equals(norm(r.getGuardianEmail())))
+            Map.of("requests", approvals.findByGuardianEmail(email).stream()
                 .sorted(Comparator.comparing(
                     (GuardianApprovalRequestEntity r) -> nz(r.getCreatedDate() == null
                         ? "" : r.getCreatedDate().toString())).reversed())
@@ -116,8 +116,7 @@ public class GuardianPortalController {
       empty.put("pending_count", 0);
       return ResponseEntity.ok(empty);
     }
-    long pending = approvals.findAll().stream()
-        .filter(r -> email.equals(norm(r.getGuardianEmail())))
+    long pending = approvals.findByGuardianEmail(email).stream()
         .filter(r -> "pending".equals(nz(r.getStatus())))
         .count();
     return ResponseEntity.ok(Map.of(
@@ -237,10 +236,33 @@ public class GuardianPortalController {
     return guardianRepo.findLatestByEmail(email).stream().findFirst().orElse(null);
   }
 
+  /**
+   * The children this guardian may actually see.
+   *
+   * <p>A guardian-initiated link starts {@code pending} and grants nothing:
+   * {@code linkChild} takes an email from the caller, so on its own it is a
+   * claim, not a relationship. Anyone registered as a guardian could otherwise
+   * name a competitor's address and read their entries through
+   * {@link #activity}.
+   *
+   * <p>It becomes real when the other side agrees — an approval request naming
+   * this guardian, which only the child's own entry creates. That is the
+   * direction worth trusting.
+   */
   private List<GuardianChildEntity> activeChildren(GuardianEntity guardian) {
-    return children.findAll().stream()
-        .filter(c -> guardian.getId().equals(c.getGuardianId()))
-        .filter(c -> "active".equals(nz(c.getStatus())))
+    Set<String> confirmed = approvals.findByGuardianEmail(norm(guardian.getEmail())).stream()
+        .map(r -> norm(r.getChildEmail()))
+        .collect(java.util.stream.Collectors.toSet());
+
+    return children.findByGuardian(guardian.getId()).stream()
+        .filter(c -> {
+          String status = nz(c.getStatus());
+          if ("revoked".equals(status)) {
+            return false;
+          }
+          return "active".equals(status)
+              || ("pending".equals(status) && confirmed.contains(norm(c.getChildEmail())));
+        })
         .toList();
   }
 
