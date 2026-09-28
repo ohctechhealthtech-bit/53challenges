@@ -2,15 +2,34 @@ import { useState } from 'react';
 import { Mail, MessageSquare, ArrowRight, CheckCircle2 } from 'lucide-react';
 import TrustPageLayout from '@/components/TrustPageLayout';
 import { SITE_CONFIG } from '@/lib/siteConfig';
+import { base44 } from '@/api/base44Client';
 
 export default function ContactUs() {
   const [submitted, setSubmitted] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
 
-  const handleSubmit = (e) => {
+  // This used to set submitted and send nothing — the page thanked people for
+  // a message that never left the browser. Success is now only claimed when
+  // the backend confirms it reached an admin.
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Form is display-only — in production this would send to a backend function.
-    setSubmitted(true);
+    setError('');
+    setSending(true);
+    try {
+      const res = await base44.functions.invoke('contactUs', form);
+      if (res?.data?.ok) {
+        setSubmitted(true);
+      } else {
+        setError(res?.data?.error || 'We could not send your message. Please email us directly.');
+      }
+    } catch (err) {
+      setError(err?.response?.data?.error
+        || 'We could not send your message. Please email us directly.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -111,10 +130,14 @@ export default function ContactUs() {
             </div>
             <button
               type="submit"
-              className="btn-bounce btn-glow inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:-translate-y-0.5 hover:brightness-110"
+              disabled={sending}
+              className="btn-bounce btn-glow inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-bold text-primary-foreground transition hover:-translate-y-0.5 hover:brightness-110 disabled:opacity-60"
             >
-              Send Message <ArrowRight className="h-4 w-4" />
+              {sending ? 'Sending…' : <>Send Message <ArrowRight className="h-4 w-4" /></>}
             </button>
+            {error && (
+              <p className="mt-3 text-sm text-destructive">{error}</p>
+            )}
           </form>
         )}
       </div>

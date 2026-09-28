@@ -1,7 +1,8 @@
 // Renders an audit.export payload ({ headers, rows }) to a dated CSV download.
+import { neutraliseFormula } from "@/lib/csv";
 function cell(v) {
   if (v === null || v === undefined) return '';
-  const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+  const s = neutraliseFormula(typeof v === "object" ? JSON.stringify(v) : String(v));
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
