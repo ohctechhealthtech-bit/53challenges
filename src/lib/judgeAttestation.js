@@ -16,9 +16,12 @@ import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getSessionToken } from '@/lib/customSession';
 
-let judgeEmail = 'me';
+let judgeEmail = "me";
 let attested = new Set();
 let loaded = false;
+// Whether the server answered. Until it has, the local cache stands in; once
+// it has, the server is the only word on the matter.
+let serverAnswered = false;
 const listeners = new Set();
 
 const notify = () => listeners.forEach((fn) => fn());
@@ -36,10 +39,20 @@ export const setAttestationJudge = (email) => {
   judgeEmail = next;
   attested = new Set();
   loaded = false;
+  // A different judge: the previous answer says nothing about this one.
+  serverAnswered = false;
   load();
 };
 
-/** Pulls this judge's declarations once per session. */
+/**
+ * Pulls this judge's declarations once per session.
+ *
+ * Once the server answers, its list is the whole truth — including when it is
+ * empty. A judge whose declaration only ever existed in this browser is asked
+ * again, once, and that answer is recorded. Reading the old local flag as a
+ * declaration would put a row in the table that nobody consciously made,
+ * which is not evidence of anything.
+ */
 async function load() {
   if (loaded) return;
   loaded = true;
@@ -49,22 +62,27 @@ async function load() {
       session_token: getSessionToken(),
     });
     for (const c of res?.data?.categories || []) attested.add(norm(c));
+    serverAnswered = true;
     notify();
   } catch {
-    // Left to the localStorage fallback below: a judge who already declared
-    // should not be asked again because a request failed.
+    // Left to the local cache below: a judge who already declared should not
+    // be asked again because a request failed.
     loaded = false;
   }
 }
 
 export const isAttested = (category) => {
   if (attested.has(norm(category))) return true;
+  // Only while the server has not answered. After it has, an old local flag
+  // is a stale cache, not a declaration.
+  if (serverAnswered) return false;
   try {
     return localStorage.getItem(cacheKey(category)) === 'yes';
   } catch {
     return false;
   }
 };
+
 
 /** Records the declaration server-side, then reflects it locally. */
 export const setAttested = async (category) => {
@@ -83,12 +101,12 @@ export const setAttested = async (category) => {
     });
   } catch {
     // The judge has declared and the UI has moved on; a failed write must not
-    // send them back through the gate. It will be re-sent on the next
-    // declaration, and the local copy carries them in the meantime.
+    // send them back through the gate. The local cache carries them until the
+    // next load, which will find nothing on the server and ask once more.
     loaded = false;
+    serverAnswered = false;
   }
 };
-
 // Live per-category attestation flag.
 export function useAttested(category) {
   const [state, setState] = useState(() => isAttested(category));
