@@ -130,19 +130,30 @@ public class PrizeLedgerController {
       ledger.setCreatedDate(now);
     }
 
+    // Amounts are checked even though only an admin reaches here. This is the
+    // record of what was promised in prize money: a negative pool, or an
+    // Infinity from a malformed number, would be stored without complaint and
+    // read back later as fact.
+    Double sponsorAmount = money(data.get("sponsor_amount"));
+    Double totalPool = money(data.get("total_pool"));
+    if (sponsorAmount == null || totalPool == null) {
+      return ResponseEntity.badRequest().body(Map.of("error",
+          "Sponsor amount and total pool must be zero or a positive number."));
+    }
+
     ledger.setCompetitionId(challenge.getId());
     ledger.setCompetitionTitle(firstNonBlank(challenge.getTitle(), challenge.getTheme()));
     ledger.setFundingSource(fundingSource);
     ledger.setSponsorName(str(data.get("sponsor_name")));
-    ledger.setSponsorAmount(toDouble(data.get("sponsor_amount")));
+    ledger.setSponsorAmount(sponsorAmount);
     ledger.setSponsorReceived(sponsorReceived);
     ledger.setSponsorReceivedAt(sponsorReceived
         ? parseInstant(str(data.get("sponsor_received_at")), now) : null);
     // Who recorded the money is part of the financial trail, so it is taken
     // from the session rather than the request.
     ledger.setSponsorReceivedBy(sponsorReceived ? email : "");
-    ledger.setTotalPool(toDouble(data.get("total_pool")));
-    ledger.setCurrency(firstNonBlank(str(data.get("currency")), "AUD"));
+    ledger.setTotalPool(totalPool);
+    ledger.setCurrency(currency(data.get("currency")));
     ledger.setPlacings(sortedPlacings(data.get("placings")));
 
     // Confirmed is never inferred — it has to be asked for explicitly.
@@ -243,6 +254,30 @@ public class PrizeLedgerController {
     }
   }
 
+
+  /**
+   * A money amount, or null when it is not one.
+   *
+   * <p>Rejects negatives and the non-finite values a malformed number parses
+   * to. {@code toDouble} answers 0 for anything it cannot read, which is a
+   * reasonable default for a filter and a bad one for a prize pool.
+   */
+  private static Double money(Object value) {
+    if (value == null) {
+      return 0d;
+    }
+    double amount = toDouble(value);
+    if (!Double.isFinite(amount) || amount < 0) {
+      return null;
+    }
+    return amount;
+  }
+
+  /** A three-letter currency code, upper-cased, defaulting to AUD. */
+  private static String currency(Object value) {
+    String code = str(value).trim().toUpperCase(java.util.Locale.ROOT);
+    return code.matches("[A-Z]{3}") ? code : "AUD";
+  }
   private List<JsonNode> placingsOf(PrizeLedgerEntity ledger) {
     try {
       JsonNode parsed = mapper.readTree(
