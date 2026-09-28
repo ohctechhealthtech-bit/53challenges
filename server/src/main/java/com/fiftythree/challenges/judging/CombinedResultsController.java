@@ -5,6 +5,7 @@ import com.fiftythree.challenges.entity.CombinedResultEntity;
 import com.fiftythree.challenges.entity.JudgingPanelEntity;
 import com.fiftythree.challenges.entity.JudgingPanelRepository;
 import com.fiftythree.challenges.entity.ScoreEntity;
+import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.vote.VoteRepository;
 import java.time.Instant;
@@ -50,24 +51,40 @@ public class CombinedResultsController {
   private final CombinedResultQueryRepository results;
   private final VoteRepository votes;
   private final JsonColumn json;
+  private final CallerResolver caller;
 
   public CombinedResultsController(
       JudgingPanelRepository panels,
       ScoreQueryRepository scores,
       CombinedResultQueryRepository results,
       VoteRepository votes,
-      JsonColumn json) {
+      JsonColumn json,
+      CallerResolver caller) {
     this.panels = panels;
     this.scores = scores;
     this.results = results;
     this.votes = votes;
     this.json = json;
+    this.caller = caller;
   }
 
   @PostMapping("/api/apps/{appId}/functions/computeCombinedResults")
   @Transactional
   public ResponseEntity<?> handle(@RequestBody(required = false) Map<String, Object> body) {
     Map<String, Object> request = body == null ? Map.of() : body;
+
+    // Admin-only. This deletes every existing result for the challenge,
+    // rewrites them, and with lock:true sets results_locked — which decides
+    // who won and cannot be undone. The Base44 original checked nothing at
+    // all, so any anonymous caller could rewrite a competition's outcome.
+    String sessionToken = str(request.get("session_token"));
+    if (caller.email(sessionToken) == null) {
+      return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    }
+    if (!caller.isAdmin(sessionToken)) {
+      return ResponseEntity.status(403).body(Map.of("error", "Admin only"));
+    }
+
     String panelId = str(request.get("panel_id"));
     if (panelId.isEmpty()) {
       return ResponseEntity.badRequest().body(Map.of("error", "Missing panel_id"));

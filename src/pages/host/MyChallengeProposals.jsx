@@ -14,19 +14,20 @@ export default function MyChallengeProposals() {
   const [proposals, setProposals] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [justPaid, setJustPaid] = useState(false);
+
 
   useEffect(() => {
     (async () => {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('paid') === '1' && params.get('draft')) {
-        try {
-          const payload = JSON.parse(decodeURIComponent(atob(params.get('draft'))));
-          await base44.functions.invoke('hostPortal', { action: 'submit_proposal', proposal: payload });
-          setJustPaid(true);
-        } catch { /* already created or unreadable — fall through to the list */ }
-        window.history.replaceState({}, '', '/my-challenge-proposals');
-      }
+      // The post-payment path that used to live here decoded a base64 `draft`
+      // query parameter and posted it as a proposal. It is gone: a URL is
+      // attacker-controlled, so anything it carries is untrusted input, and
+      // driving a server-side write from it is not something to keep around.
+      //
+      // Nothing is lost by removing it. The backend's submit_proposal reads
+      // only `id` and checks ownership against the session — it never looked
+      // at the posted payload — and no code builds a `paid=1&draft=` URL any
+      // more. This page is itself unrouted; /my-challenge-proposals redirects
+      // to /host-dashboard (see App.jsx).
       const res = await base44.functions.invoke('hostPortal', { action: 'list_my_proposals' }).catch(() => null);
       setProposals(res?.data?.proposals || []);
       setLoading(false);
@@ -45,11 +46,6 @@ export default function MyChallengeProposals() {
         </Button>
       </div>
 
-      {justPaid && (
-        <div className="mb-6 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-sm text-emerald-300">
-          Thanks — your deposit is paid and your proposal is with our team. We'll be in touch shortly.
-        </div>
-      )}
 
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>

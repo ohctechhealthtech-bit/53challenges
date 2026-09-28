@@ -1,5 +1,6 @@
 // Frontend helpers for verified voting, fraud detection, and combined results.
 import { base44 } from '@/api/base44Client';
+import { getSessionToken } from '@/lib/customSession';
 
 // Run server-side fraud detection (optionally scoped to a challenge).
 export async function detectVoteFraud(challengeId = null) {
@@ -9,7 +10,8 @@ export async function detectVoteFraud(challengeId = null) {
 
 // Compute combined weighted results for a judging panel; optionally lock.
 export async function computeCombinedResults(panelId, lock = false) {
-  const res = await base44.functions.invoke('computeCombinedResults', { panel_id: panelId, lock });
+  const res = await base44.functions.invoke('computeCombinedResults',
+    { panel_id: panelId, lock, session_token: getSessionToken() });
   return res.data;
 }
 
