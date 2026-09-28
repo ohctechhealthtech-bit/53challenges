@@ -2,6 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      Content-Security-Policy. The part that earns its keep is script-src: the
+      Vite build emits one module script and no inline ones, so 'unsafe-inline'
+      can be left out and an injected <script> will not run.
+
+      The rest is deliberately permissive where it has to be. Entries carry
+      images and media from wherever entrants host them, so img-src and
+      media-src allow https: broadly; blocking those would break the site
+      without blocking an attack, since an image URL is not script.
+
+      style-src keeps 'unsafe-inline' because Radix and the animation library
+      set inline styles on elements they manage.
+
+      The sha256 hash allows the page-tracking snippet that @base44/vite-plugin
+      injects at build time. If that plugin changes its snippet the hash stops
+      matching and the tracking stops — visible in the console, harmless to the
+      site. frame-ancestors is absent deliberately: a browser ignores it in a
+      meta tag, so it belongs in an nginx header if it is wanted.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-toonoMj9D9kI91fi//2ge0t7uXLVhuK2wgozB+si3Kw=' https://accounts.google.com https://js.stripe.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' https: data: blob:; media-src 'self' https: data: blob:; connect-src 'self' https://base44.app https://accounts.google.com https://api.stripe.com; frame-src https://accounts.google.com https://js.stripe.com https://hooks.stripe.com https://www.youtube.com https://youtube.com https://player.vimeo.com; object-src 'none'; base-uri 'self'; form-action 'self'" />
     <link rel="icon" type="image/png" href="https://media.base44.com/images/public/6a683318ec3c2cc96e77b420/7a592c404_ChatGPT_Image_Jul_30__2026__06_53_11_PM-removebg-preview.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="manifest" href="/manifest.json" />
