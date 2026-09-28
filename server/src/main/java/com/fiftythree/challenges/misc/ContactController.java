@@ -138,19 +138,16 @@ public class ContactController {
   }
 
   /**
-   * The caller's address as nginx saw it.
+   * The caller's address.
    *
-   * <p>Only the first hop of X-Forwarded-For is taken, and only because this
-   * app sits behind our own proxy which sets it. A client can append to that
-   * header, so the last entries are not trustworthy — but the first is what
-   * our nginx recorded.
+   * <p>{@code server.forward-headers-strategy: framework} is set, so Spring
+   * has already applied X-Forwarded-For from our nginx by the time this runs
+   * and getRemoteAddr returns the real client. Parsing the header again here
+   * would second-guess that, and get it wrong the day the proxy changes.
    */
   private static String clientAddress(HttpServletRequest http) {
-    String forwarded = http.getHeader("X-Forwarded-For");
-    if (forwarded != null && !forwarded.isBlank()) {
-      return forwarded.split(",")[0].trim();
-    }
-    return http.getRemoteAddr() == null ? "unknown" : http.getRemoteAddr();
+    String address = http.getRemoteAddr();
+    return address == null || address.isBlank() ? "unknown" : address;
   }
 
   private static String trimmed(Object value, int max) {

@@ -12,6 +12,7 @@ import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.user.UserRepository;
 import com.fiftythree.challenges.entity.EmailVerificationEntity;
 import com.fiftythree.challenges.verification.EmailVerificationService;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -115,8 +116,7 @@ public class HostChallengeRequestController {
       };
     } catch (Exception e) {
       log.error("hostChallengeRequest action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Request failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

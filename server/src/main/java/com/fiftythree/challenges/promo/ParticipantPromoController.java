@@ -10,6 +10,7 @@ import com.fiftythree.challenges.entity.ParticipantSocialAccountEntity;
 import com.fiftythree.challenges.llm.LlmClient;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -112,8 +113,7 @@ public class ParticipantPromoController {
       };
     } catch (Exception e) {
       log.error("participantPromo failed", e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Promo request failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

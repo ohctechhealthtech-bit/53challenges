@@ -7,6 +7,7 @@ import com.fiftythree.challenges.entity.ChallengeDraftEntity;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -129,8 +130,7 @@ public class TemplateLibraryController {
       };
     } catch (Exception e) {
       log.error("templateLibrary action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Template library request failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

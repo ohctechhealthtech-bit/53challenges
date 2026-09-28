@@ -2,6 +2,7 @@ package com.fiftythree.challenges.upstream;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;

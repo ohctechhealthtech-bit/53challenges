@@ -8,6 +8,7 @@ import com.fiftythree.challenges.entity.ChallengeRepository;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;

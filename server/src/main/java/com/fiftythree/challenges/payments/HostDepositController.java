@@ -3,6 +3,7 @@ package com.fiftythree.challenges.payments;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.user.UserRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -97,8 +98,7 @@ public class HostDepositController {
       return ResponseEntity.status(e.status()).body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
       log.error("hostDepositCheckout failed", e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Could not start payment" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

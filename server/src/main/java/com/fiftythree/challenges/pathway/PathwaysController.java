@@ -16,6 +16,7 @@ import com.fiftythree.challenges.judging.JudgingPanelQueryRepository;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -156,8 +157,7 @@ public class PathwaysController {
       };
     } catch (Exception e) {
       log.error("pathways action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Server error" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

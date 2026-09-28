@@ -9,6 +9,7 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.user.UserRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -108,8 +109,7 @@ public class ChallengeFundsController {
       return ResponseEntity.status(e.status()).body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
       log.error("challengeFunds failed", e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Payment request failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

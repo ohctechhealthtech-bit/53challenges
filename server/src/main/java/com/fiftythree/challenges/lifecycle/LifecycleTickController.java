@@ -2,6 +2,7 @@ package com.fiftythree.challenges.lifecycle;
 
 import com.fiftythree.challenges.entity.ChallengeEntity;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -160,8 +161,7 @@ public class LifecycleTickController {
       return ResponseEntity.ok(out);
     } catch (Exception e) {
       log.error("lifecycleTick failed", e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Lifecycle tick failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

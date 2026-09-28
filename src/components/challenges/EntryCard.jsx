@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { Heart, MapPin, ExternalLink, Loader2 } from 'lucide-react';
 import { Image } from '@/components/ui/image';
@@ -68,8 +69,8 @@ export default function EntryCard({ entry, rank, votedEntryIds, onVoted, initial
             )}
           </div>
           <div className="flex items-center gap-2">
-            {entry.work_url && (
-              <a href={entry.work_url} target="_blank" rel="noreferrer" className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-foreground hover:bg-muted" aria-label="View work">
+            {safeExternalUrl(entry.work_url) && (
+              <a href={safeExternalUrl(entry.work_url)} target="_blank" rel="noreferrer" className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-foreground hover:bg-muted" aria-label="View work">
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}

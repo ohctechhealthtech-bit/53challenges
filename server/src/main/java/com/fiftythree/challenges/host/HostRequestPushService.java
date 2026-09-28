@@ -3,6 +3,7 @@ package com.fiftythree.challenges.host;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;

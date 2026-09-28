@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { X, ExternalLink, AlertTriangle } from 'lucide-react';
 import ScoreForm from '@/components/judging/ScoreForm';
@@ -38,8 +39,8 @@ export default function ScoreSheet({ panel, assignment, onClose, onSubmitted }) 
         <div className="mt-4 rounded-xl border border-border bg-white/5 p-4">
           {assignment.work_type === 'text' ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed">{assignment.work_text || '(No text provided)'}</p>
-          ) : assignment.work_link ? (
-            <a href={assignment.work_link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
+          ) : safeExternalUrl(assignment.work_link) ? (
+            <a href={safeExternalUrl(assignment.work_link)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary">
               <ExternalLink className="h-4 w-4" /> Open submitted work
             </a>
           ) : (

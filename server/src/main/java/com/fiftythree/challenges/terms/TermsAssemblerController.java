@@ -9,6 +9,7 @@ import com.fiftythree.challenges.entity.TermsDocumentEntity;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.user.UserRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -109,8 +110,7 @@ public class TermsAssemblerController {
       };
     } catch (Exception e) {
       log.error("termsAssembler action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of(
-          "error", e.getMessage() == null ? "Terms assembler request failed" : e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 
