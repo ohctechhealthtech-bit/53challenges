@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useEffect, useState } from 'react';
 import { Loader2, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -64,7 +65,7 @@ export default function ApprovalPreviewDialog({ open, onOpenChange, entryId, row
                 ) : isImage ? (
                   <img src={media} alt="" className="max-h-[380px] w-full object-contain" />
                 ) : (
-                  <a href={media} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-4 text-sm font-semibold text-primary">
+                  <a href={safeExternalUrl(media)} target="_blank" rel="noreferrer" className="flex items-center gap-2 p-4 text-sm font-semibold text-primary">
                     <ExternalLink className="h-4 w-4" /> Open submitted work
                   </a>
                 )}

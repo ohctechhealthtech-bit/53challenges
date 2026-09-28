@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { Globe, UploadCloud, Loader2, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -236,7 +237,7 @@ export default function CreateDomainDialog({ open, onOpenChange, challenges, bas
               )}
               {isActive && (
                 <a
-                  href={result.domain?.full_url}
+                  href={safeExternalUrl(result.domain?.full_url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"

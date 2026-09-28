@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { getSessionToken } from '@/lib/appSession';
@@ -149,7 +150,7 @@ export default function HostRequestQuotePanel({ request, onChanged }) {
           {status === 'paid' && request.payment_paid_at && (
             <p className="text-emerald-600 font-medium"><CheckCircle2 className="w-3.5 h-3.5 inline" /> Paid on {new Date(request.payment_paid_at).toLocaleString('en-AU')}</p>
           )}
-          <p className="break-all"><span className="font-medium text-stone-600">Payment link:</span> <a href={request.payment_link_url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{request.payment_link_url}</a></p>
+          <p className="break-all"><span className="font-medium text-stone-600">Payment link:</span> <a href={safeExternalUrl(request.payment_link_url)} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">{request.payment_link_url}</a></p>
         </div>
       )}
 

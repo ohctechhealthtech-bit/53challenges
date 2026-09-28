@@ -1,7 +1,16 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { Globe, Mail, MapPin, Wand2, Loader2, Check, Copy, UserPlus } from 'lucide-react';
 import { aiGenerateInvite, savePartnerProspect } from '@/lib/marketing';
 
+
+// A prospect's website, which an AI suggested and nobody has checked. The
+// bare value is tried first so an https:// address keeps its scheme; a bare
+// domain gets one added. Anything that is not http(s) returns null and the
+// anchor renders without an href rather than as a live link.
+function prospectWebsite(value) {
+  return safeExternalUrl(value) || safeExternalUrl(`https://${value}`);
+}
 export default function ProspectCard({ prospect, partnerKind }) {
   const [invite, setInvite] = useState(null);
   const [busy, setBusy] = useState('');
@@ -48,7 +57,7 @@ export default function ProspectCard({ prospect, partnerKind }) {
           <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {prospect.kind && <span className="rounded-full bg-muted px-2 py-0.5 font-semibold">{prospect.kind}</span>}
             {prospect.location && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" /> {prospect.location}</span>}
-            {prospect.website && <a href={prospect.website.startsWith('http') ? prospect.website : `https://${prospect.website}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground"><Globe className="h-3 w-3" /> {prospect.website}</a>}
+            {prospect.website && <a href={prospectWebsite(prospect.website)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-foreground"><Globe className="h-3 w-3" /> {prospect.website}</a>}
             {prospect.contact_email && <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {prospect.contact_email}</span>}
           </div>
         </div>

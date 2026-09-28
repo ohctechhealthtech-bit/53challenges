@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -84,7 +85,7 @@ export default function JudgeDetailDialog({ open, onOpenChange, judgeId, onEdit 
                       {w.description && <p className="mt-1 text-xs text-muted-foreground">{w.description}</p>}
                       {(w.url || w.link || w.file_url) && (
                         <a
-                          href={w.url || w.link || w.file_url}
+                          href={safeExternalUrl(w.url || w.link || w.file_url)}
                           target="_blank"
                           rel="noreferrer"
                           className="mt-1 inline-block text-xs font-semibold text-primary underline"

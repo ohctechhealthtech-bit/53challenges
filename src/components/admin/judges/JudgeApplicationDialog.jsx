@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -83,7 +84,7 @@ export default function JudgeApplicationDialog({ open, onOpenChange, row, canDec
                     <li key={w.id || i} className="rounded-lg border border-border px-3 py-2">
                       <span className="font-semibold">{w.title || w.name || `Work ${i + 1}`}</span>
                       {(w.link || w.work_link || w.url) && (
-                        <a href={w.link || w.work_link || w.url} target="_blank" rel="noreferrer" className="ml-2 text-primary underline">Open</a>
+                        <a href={safeExternalUrl(w.link || w.work_link || w.url)} target="_blank" rel="noreferrer" className="ml-2 text-primary underline">Open</a>
                       )}
                     </li>
                   ))}

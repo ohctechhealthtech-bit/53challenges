@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { ExternalLink, Link as LinkIcon } from 'lucide-react';
 
 /** Turn a shared link into an embeddable player URL where we can. */
@@ -64,7 +65,7 @@ export default function EntryMediaPreview({ entry, url }) {
       )}
 
       <a
-        href={url}
+        href={safeExternalUrl(url)}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"

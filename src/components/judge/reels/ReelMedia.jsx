@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 // Renders an entry's submitted work: image, video, audio, written text or a link.
 import { ExternalLink, FileText } from 'lucide-react';
 import PausedPlayVideo from '@/components/media/PausedPlayVideo';
@@ -40,7 +41,7 @@ export default function ReelMedia({ entry }) {
   }
   return (
     <a
-      href={url}
+      href={safeExternalUrl(url)}
       target="_blank"
       rel="noopener noreferrer"
       className="flex h-full w-full items-center justify-center gap-2 text-sm font-semibold text-sky-300 hover:underline"

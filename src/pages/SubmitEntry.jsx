@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -749,7 +750,7 @@ export default function SubmitEntry() {
                   <div className="mt-2 space-y-1.5">
                     {formData.externalLinks.map((link) => (
                       <div key={link.id} className="flex items-center justify-between rounded border border-border bg-secondary p-2">
-                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-medium text-blue-400 underline">{link.url}</a>
+                        <a href={safeExternalUrl(link.url)} target="_blank" rel="noopener noreferrer" className="truncate text-xs font-medium text-blue-400 underline">{link.url}</a>
                         <button onClick={() => setField('externalLinks', formData.externalLinks.filter((l) => l.id !== link.id))} className="shrink-0 rounded p-1 text-destructive hover:bg-destructive/10"><X className="h-4 w-4" /></button>
                       </div>
                     ))}

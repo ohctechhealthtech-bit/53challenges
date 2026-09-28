@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { useState } from 'react';
 import { Check, X, Loader2, Eye, Link as LinkIcon, Film, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -80,7 +81,7 @@ export default function ContentApprovalCard({ entry, onDecided }) {
           {entry.description && <p className="mt-2 text-sm">{entry.description}</p>}
           {entry.work_text && <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{entry.work_text}</p>}
           {link && (
-            <a href={link} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-medium text-primary underline">
+            <a href={safeExternalUrl(link)} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-xs font-medium text-primary underline">
               Open link
             </a>
           )}

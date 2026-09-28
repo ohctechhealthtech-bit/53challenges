@@ -1,3 +1,4 @@
+import { safeExternalUrl } from '@/lib/safeUrl';
 import { money, shortDate, TIER_TONE, titleCase } from './sponsorsMeta';
 
 export default function SponsorTable({ sponsors = [], onEdit, onToggle, onDelete, busyId }) {
@@ -22,7 +23,7 @@ export default function SponsorTable({ sponsors = [], onEdit, onToggle, onDelete
               <td className="px-4 py-3">
                 <span className="block font-semibold">{s.name}</span>
                 {s.website_url && (
-                  <a href={s.website_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
+                  <a href={safeExternalUrl(s.website_url)} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
                     {s.website_url.replace(/^https?:\/\//, '')}
                   </a>
                 )}
