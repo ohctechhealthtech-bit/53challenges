@@ -141,11 +141,55 @@ export function rankEntries(finals, criteria) {
   return { ranked: entries, firstWeightedCriterion: firstWeighted?.name || null };
 }
 
-// Generate an anonymous ID for an entry (stable, not traceable to content).
+/**
+ * A short label for an entry in the judging UI.
+ *
+ * NOT a blinding control, despite the name, and it cannot become one here.
+ * The algorithm is public and the input is the entry id, so anyone who can
+ * see entry ids can compute every label and map it back. Treat it as a
+ * readable handle for referring to an entry in notes and audit lines.
+ *
+ * Making judging genuinely blind needs a server-generated random id stored
+ * against the entry, so the mapping exists only in the database. That is a
+ * change to the judging data model rather than to this function.
+ */
 export function anonymousId(entryId) {
   let h = 0;
   for (let i = 0; i < entryId.length; i++) h = (h * 31 + entryId.charCodeAt(i)) >>> 0;
   return `E-${(h % 100000).toString().padStart(5, '0')}`;
+}
+
+/**
+ * A uniform shuffle, using the platform's cryptographic RNG.
+ *
+ * `[...a].sort(() => Math.random() - 0.5)` was used here, and it does not
+ * shuffle: Array.sort with an inconsistent comparator gives a biased,
+ * engine-dependent order, so some judges drew systematically more entries
+ * than others and the bias repeated. Fisher-Yates is uniform by construction.
+ *
+ * crypto.getRandomValues rather than Math.random because this decides who
+ * scores whose work — a predictable assignment is a way to choose your judges.
+ */
+function shuffled(items) {
+  const a = [...items];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = randomBelow(i + 1);
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** A uniform integer in [0, n), rejecting the biased tail of the range. */
+function randomBelow(n) {
+  if (n <= 1) return 0;
+  const limit = Math.floor(0x100000000 / n) * n;
+  const buf = new Uint32Array(1);
+  let v;
+  do {
+    crypto.getRandomValues(buf);
+    v = buf[0];
+  } while (v >= limit);
+  return v % n;
 }
 
 // Random assignment: every entry receives >=3 judges, excluding COI matches.
@@ -168,8 +212,8 @@ export function assignJudgesToEntries(entries, judges, perEntry = 3) {
       return;
     }
     // shuffle and take perEntry
-    const shuffled = [...eligible].sort(() => Math.random() - 0.5);
-    out.push({ entry, judges: shuffled.slice(0, perEntry) });
+    const picked = shuffled(eligible);
+    out.push({ entry, judges: picked.slice(0, perEntry) });
   });
   return out;
 }
