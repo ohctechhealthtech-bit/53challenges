@@ -6,6 +6,8 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import com.fiftythree.challenges.support.RateLimiter;
+import java.time.Duration;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -28,6 +30,26 @@ public class EmailVerificationController {
 
   private final EmailVerificationService verification;
 
+  /**
+   * Verification attempts per address and purpose.
+   *
+   * <p>A code is six digits. With no limit a caller can simply try all of
+   * them, and the token this hands back is what gates entry submission and the
+   * guardian flow — so the code is the whole of the control. Ten attempts in
+   * fifteen minutes leaves a legitimate mistyping unaffected and makes
+   * guessing useless.
+   */
+  private final RateLimiter attempts = new RateLimiter(10, Duration.ofMinutes(15));
+
+  /**
+   * Codes requested per address.
+   *
+   * <p>Anyone could name any address and have us mail it, as often as they
+   * liked — a flooding tool wearing our sending reputation. Five an hour is
+   * well above a person who did not receive the first one.
+   */
+  private final RateLimiter sends = new RateLimiter(5, Duration.ofHours(1));
+
   public EmailVerificationController(EmailVerificationService verification) {
     this.verification = verification;
   }
@@ -47,17 +69,30 @@ public class EmailVerificationController {
     String action = str(request.get("action"));
     try {
       if ("send".equals(action)) {
+        String to = str(request.get("email")).trim().toLowerCase();
+        if (!sends.allow(to)) {
+          return ResponseEntity.status(429).body(Map.of("error",
+              "Too many codes requested for this address. Please wait and try again."));
+        }
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("success", true);
         out.putAll(verification.send(str(request.get("email")), purpose));
         return ResponseEntity.ok(out);
       }
       if ("verify".equals(action)) {
+        String to = str(request.get("email")).trim().toLowerCase();
+        if (!attempts.allow(to + "|" + purpose)) {
+          return ResponseEntity.status(429).body(Map.of("error",
+              "Too many attempts. Please request a new code and try again shortly."));
+        }
         Map<String, Object> result =
             verification.confirm(str(request.get("email")), purpose, str(request.get("code")));
         if (result.containsKey("error")) {
           return ResponseEntity.badRequest().body(result);
         }
+        // A correct code clears the count: someone who mistyped twice before
+        // getting it right is not left part-way to locked out.
+        attempts.clear(to + "|" + purpose);
         return ResponseEntity.ok(result);
       }
       return ResponseEntity.badRequest().body(Map.of("error", "Unknown action: " + action));
