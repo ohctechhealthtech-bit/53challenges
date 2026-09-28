@@ -6,15 +6,22 @@ import { clearSessionToken, getSessionToken, getAccessToken, setAccessToken } fr
 
 // Custom (Challenge-API) logins carry no platform role, so admin screens would
 // deny actual admins. Resolve the role from this app's own user record.
+//
+// The stored profile's own role is dropped first. It comes from localStorage,
+// which the person can edit, and the lookup below falls back to `u` when the
+// server cannot be reached — so keeping it would mean a hand-edited role
+// survived a failed check and the UI showed admin screens. Server endpoints
+// enforce regardless, but a UI that lies about who you are is its own problem.
 async function resolveSessionRole(u) {
+  const withoutClaim = { ...u, role: 'user' };
   const token = getSessionToken();
-  if (!token) return u;
+  if (!token) return withoutClaim;
   try {
     const res = await base44.functions.invoke('sessionRole', { session_token: token });
     const role = res.data?.role;
-    return role ? { ...u, role } : u;
+    return role ? { ...u, role } : withoutClaim;
   } catch {
-    return u;
+    return withoutClaim;
   }
 }
 

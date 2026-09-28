@@ -2,7 +2,7 @@
 #
 # End-to-end check of the Java API against the live system.
 #
-#   bash migration/smoke-test.sh you@example.com 'your-password'
+#   bash migration/smoke-test.sh you@example.com     (prompts for the password)
 #
 # Run it from anywhere with curl. It talks to https://53challenges.com, so it
 # exercises the real nginx routing, not just the app on localhost.
@@ -27,7 +27,18 @@ WRITE=0
 for arg in "$@"; do
   case "$arg" in
     --write) WRITE=1 ;;
-    *) if [ -z "$EMAIL" ]; then EMAIL="$arg"; elif [ -z "$PASSWORD" ]; then PASSWORD="$arg"; fi ;;
+    *)
+      if [ -z "$EMAIL" ]; then
+        EMAIL="$arg"
+      else
+        # A password given as an argument is visible in shell history and to
+        # anyone who can run ps on this machine, and this script signs in with
+        # a live admin account. Refused rather than quietly accepted.
+        echo "Refusing a password on the command line — it would be visible in ps and history." >&2
+        echo "Run: bash migration/smoke-test.sh $EMAIL     (you will be prompted)" >&2
+        exit 2
+      fi
+      ;;
   esac
 done
 
