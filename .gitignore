@@ -45,3 +45,9 @@ server/target/
 
 # Deployment archives, likewise rebuilt rather than tracked.
 *.zip
+
+# The same build output as dist/, staged for upload. It was tracked by
+# accident: a copy committed on 24 September was four days stale and carried
+# none of the security fixes since, so anyone who uploaded it would have
+# deployed a build predating them.
+upload-dist/
