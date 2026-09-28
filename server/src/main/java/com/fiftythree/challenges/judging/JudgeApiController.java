@@ -5,12 +5,14 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
 import com.fiftythree.challenges.support.ApiErrors;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -51,10 +53,15 @@ public class JudgeApiController {
 
   private final ChallengeApiClient upstream;
   private final CallerResolver caller;
+  private final JudgeAttestationRepository attestations;
 
-  public JudgeApiController(ChallengeApiClient upstream, CallerResolver caller) {
+  public JudgeApiController(
+      ChallengeApiClient upstream,
+      CallerResolver caller,
+      JudgeAttestationRepository attestations) {
     this.upstream = upstream;
     this.caller = caller;
+    this.attestations = attestations;
   }
 
   @PostMapping("/api/apps/{appId}/functions/judgeApi")
@@ -74,6 +81,18 @@ public class JudgeApiController {
     }
 
     String action = str(request.get("action"));
+
+    // Handled here, not proxied: the parent has no attestation action, which
+    // is why these lived in localStorage until now.
+    if ("attestations".equals(action)) {
+      return ResponseEntity.ok(Map.of("categories",
+          attestations.findByJudge(judgeEmail).stream()
+              .map(JudgeAttestationEntity::getCategory).toList()));
+    }
+    if ("attest".equals(action)) {
+      return attest(judgeEmail, str(request.get("category")));
+    }
+
     try {
       if (GET_ACTIONS.contains(action)) {
         return read(action, judgeEmail, request);
@@ -88,6 +107,46 @@ public class JudgeApiController {
     }
   }
 
+
+  /**
+   * Records a judge's declaration for a category.
+   *
+   * <p>Idempotent by the table's unique key rather than by reading first:
+   * two tabs, or a double click, would race a read-then-write and the
+   * constraint settles it without a transaction.
+   *
+   * <p>The category is normalised on the way in, because it arrives spelled
+   * several ways and one declaration should cover the category however it was
+   * written.
+   */
+  private ResponseEntity<?> attest(String judgeEmail, String category) {
+    String scope = normaliseCategory(category);
+    Instant now = Instant.now();
+
+    JudgeAttestationEntity row = new JudgeAttestationEntity();
+    row.setId(java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 24));
+    row.setJudgeEmail(judgeEmail);
+    row.setCategory(scope);
+    row.setAttestedAt(now);
+    row.setCreatedDate(now);
+    row.setUpdatedDate(now);
+    row.setIsSample(false);
+
+    try {
+      attestations.save(row);
+    } catch (DataIntegrityViolationException alreadyDeclared) {
+      // Already recorded. The judge asked for the same thing twice and got
+      // it, which is the right answer to give them.
+      log.debug("Attestation already held for {} / {}", judgeEmail, scope);
+    }
+    return ResponseEntity.ok(Map.of("ok", true, "category", scope));
+  }
+
+  /** "visual-arts", "visual_arts" and "Visual Arts" are one category. */
+  private static String normaliseCategory(String category) {
+    String value = category == null ? "" : category.trim().toLowerCase(java.util.Locale.ROOT);
+    return value.isEmpty() ? "all" : value.replaceAll("[\s_-]+", "_");
+  }
   private ResponseEntity<?> read(String action, String judgeEmail, Map<String, Object> request) {
     Map<String, String> params = new LinkedHashMap<>();
     params.put("judge_email", judgeEmail);

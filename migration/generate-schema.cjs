@@ -1,4 +1,20 @@
 /**
+ * RETIRED — kept for the record, not for running.
+ *
+ * This converted the Base44 entity definitions (base44/entities/*.jsonc) into
+ * MySQL DDL. Those definitions were removed once the migration was complete,
+ * so this cannot run: it reads a directory that no longer exists.
+ *
+ * Its output, migration/sql/schema.sql, survives and is now the source of
+ * truth. A new table is added there by hand — see migration/ddl/ for the
+ * statements applied to the live database — and migration/generate-entities.cjs
+ * still turns schema.sql into the JPA classes, which is the half of the
+ * pipeline that has a future.
+ *
+ * Restoring it would mean restoring base44/entities, and Base44 is no longer
+ * where this schema comes from.
+ *
+ * ── original header ────────────────────────────────────────────────────────
  * Generates MySQL DDL from the Base44 entity definitions.
  *
  *   node migration/generate-schema.cjs > migration/sql/schema.sql
