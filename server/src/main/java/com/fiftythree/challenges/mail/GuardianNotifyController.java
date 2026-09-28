@@ -12,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -34,22 +33,32 @@ public class GuardianNotifyController {
   private static final Logger log = LoggerFactory.getLogger(GuardianNotifyController.class);
 
   private final MailService mail;
+
+  /**
+   * The address used for links in outbound mail.
+   *
+   * <p>Configured, not taken from the request. This read the Origin header,
+   * which the caller sets — so a request could put any host into an email
+   * that arrives from our domain, telling a guardian to approve their child's
+   * entry somewhere we do not control.
+   */
+  private final String siteUrl;
   private final GuardianApprovalRequestRepository requests;
   private final CallerResolver caller;
 
   public GuardianNotifyController(
       MailService mail,
       GuardianApprovalRequestRepository requests,
-      CallerResolver caller) {
+      CallerResolver caller,
+      @org.springframework.beans.factory.annotation.Value("${app.site-url}") String siteUrl) {
     this.mail = mail;
     this.requests = requests;
     this.caller = caller;
+    this.siteUrl = siteUrl == null ? "" : siteUrl.replaceAll("/+$", "");
   }
 
   @PostMapping("/api/apps/{appId}/functions/guardianStatusNotify")
-  public ResponseEntity<?> handle(
-      @RequestBody(required = false) Map<String, Object> body,
-      @RequestHeader(value = "Origin", required = false) String origin) {
+  public ResponseEntity<?> handle(@RequestBody(required = false) Map<String, Object> body) {
 
     Map<String, Object> request = body == null ? Map.of() : body;
     String sessionToken = str(request.get("session_token"));
@@ -87,13 +96,13 @@ public class GuardianNotifyController {
     String action = str(request.get("action"));
 
     return switch (action == null ? "" : action) {
-      case "notify_request" -> notifyGuardian(approval, orEmpty(origin));
+      case "notify_request" -> notifyGuardian(approval);
       case "notify_decision" -> notifyEntrant(approval);
       default -> ResponseEntity.status(400).body(Map.of("error", "Unknown action"));
     };
   }
 
-  private ResponseEntity<?> notifyGuardian(GuardianApprovalRequestEntity r, String appUrl) {
+  private ResponseEntity<?> notifyGuardian(GuardianApprovalRequestEntity r) {
     String subject = "Approval needed: " + orDefault(r.getChildName(), "your child")
         + " entered \"" + orDefault(r.getChallengeTitle(), "a challenge") + "\"";
 
@@ -106,7 +115,7 @@ public class GuardianNotifyController {
         "",
         "The entry stays on hold until you approve it. To review and approve or decline:",
         "1. Sign in (or register) on 53 Challenges with this email address.",
-        "2. Open the Guardian Dashboard: " + appUrl + "/guardian",
+        "2. Open the Guardian Dashboard: " + siteUrl + "/guardian",
         "",
         "If you did not expect this, you can decline the request with a reason "
             + "from the same page.");

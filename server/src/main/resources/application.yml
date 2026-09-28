@@ -58,6 +58,10 @@ spring:
       hibernate.jdbc.time_zone: UTC
 
 app:
+  # The public address of this site, used to build links in outbound email.
+  # Configured rather than taken from the request: the Origin header is set by
+  # the caller, and a link in an email we send must not be.
+  site-url: ${SITE_URL:https://53challenges.com}
   # Where private files live (the default subdomain TLS key). No default on
   # purpose: a default would end up inside a document root sooner or later,
   # and nobody would notice until the key was downloadable.
