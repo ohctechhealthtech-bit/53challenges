@@ -43,6 +43,7 @@ public class ContentModerationController {
 
   private final EntryQueryRepository entries;
   private final ChallengeRepository challenges;
+  private final HostChallengeQueryRepository hostChallenges;
   private final HostAccessService hostAccess;
   private final ComplianceAuditService audit;
   private final CallerResolver caller;
@@ -51,12 +52,14 @@ public class ContentModerationController {
   public ContentModerationController(
       EntryQueryRepository entries,
       ChallengeRepository challenges,
+      HostChallengeQueryRepository hostChallenges,
       HostAccessService hostAccess,
       ComplianceAuditService audit,
       CallerResolver caller,
       ObjectMapper mapper) {
     this.entries = entries;
     this.challenges = challenges;
+    this.hostChallenges = hostChallenges;
     this.hostAccess = hostAccess;
     this.audit = audit;
     this.caller = caller;
@@ -183,11 +186,7 @@ public class ContentModerationController {
     if (organisationId.isEmpty()) {
       return List.of();
     }
-    return challenges.findAll().stream()
-        .filter(c -> organisationId.equals(nz(c.getHostOrganisationId())))
-        .filter(c -> "host_managed".equals(nz(c.getContentType())))
-        .map(ChallengeEntity::getId)
-        .toList();
+    return hostChallenges.findHostManagedIds(organisationId);
   }
 
   private static String firstNonBlank(String... values) {
