@@ -83,7 +83,11 @@ public class GuardianConsentController {
         // ConsentPanel on the compliance admin page; get_consent has none.
         case "list_consents" -> isAdmin ? listConsents(request) : adminOnly();
         case "get_consent" -> isAdmin ? getConsent(request) : adminOnly();
-        case "create_consent" -> createConsent(request);
+        // Admin-only, like the reads beside it. No client calls this — the
+        // real consent record is created by the entry flow — so leaving it
+        // open only offered any signed-in account a way to fill a compliance
+        // table with records naming children who never entered anything.
+        case "create_consent" -> isAdmin ? createConsent(request) : adminOnly();
         case "grant_consent" -> isAdmin ? grant(request) : adminOnly();
         case "decline_consent" -> isAdmin ? decline(request) : adminOnly();
         case "withdraw_consent" -> isAdmin ? withdraw(request, email) : adminOnly();
