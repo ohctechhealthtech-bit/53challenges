@@ -179,6 +179,22 @@ expect "pathways public_config is public" 200 "$(status "$r")" "$(body "$r")"
 r=$(call lifecycleTick '{}')
 expect "lifecycleTick refuses an anonymous caller" 401 "$(status "$r")" "$(body "$r")"
 
+# Both are admin diagnostics that were reachable by anyone. whatsMyIp reports
+# the server's outbound address and spends an outbound request per call;
+# moderateSubmission took its actor from the request body, so a stranger could
+# act as any address in the moderation queue.
+r=$(call whatsMyIp '{}')
+expect "whatsMyIp is admin-only" 401 "$(status "$r")" "$(body "$r")"
+
+r=$(call moderateSubmission '{"action":"queue","acting_email":"admin@example.com"}')
+expect "moderateSubmission refuses a body-supplied identity" 401 "$(status "$r")" "$(body "$r")"
+
+r=$(call computeCombinedResults '{"panel_id":"x","lock":true}')
+expect "computeCombinedResults refuses an anonymous caller" 401 "$(status "$r")" "$(body "$r")"
+
+r=$(call guardianStatusNotify '{"request_id":"x","action":"notify_request"}')
+expect "guardianStatusNotify refuses an anonymous caller" 401 "$(status "$r")" "$(body "$r")"
+
 # Anything not yet ported must still answer, via the Base44 fallback.
 r=$(call challengeApi '{"action":"challenges","id":"6aaa7e0a99df11bc8bcc649b"}')
 if printf '%s' "$(body "$r")" | grep -q 'Singing Challenge'; then

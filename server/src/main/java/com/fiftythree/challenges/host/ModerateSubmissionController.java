@@ -60,14 +60,24 @@ public class ModerateSubmissionController {
   public ResponseEntity<?> handle(@RequestBody(required = false) Map<String, Object> body) {
     Map<String, Object> request = body == null ? Map.of() : body;
 
-    // The main site identifies people by address, so it always needs to know
-    // who is acting — an API key only identifies the app.
-    String actingEmail = str(request.get("acting_email"));
-    if (actingEmail.isEmpty()) {
-      actingEmail = nz(caller.email(str(request.get("session_token"))));
-    }
+    // Identity comes from the session, never from the body. This read
+    // acting_email from the request first and only fell back to the session,
+    // so an unauthenticated caller could name any address and act as that
+    // person in the moderation queue.
+    //
+    // A body-supplied address is still honoured for an admin, because acting
+    // on someone's behalf is a real administrative need — but it now requires
+    // being an admin to do it.
+    String sessionToken = str(request.get("session_token"));
+    String actingEmail = nz(caller.email(sessionToken));
     if (actingEmail.isEmpty()) {
       return ResponseEntity.status(401).body(Map.of("error", "Please sign in"));
+    }
+    String onBehalfOf = str(request.get("acting_email"));
+    if (!onBehalfOf.isEmpty()
+        && !onBehalfOf.equalsIgnoreCase(actingEmail)
+        && caller.isAdmin(sessionToken)) {
+      actingEmail = onBehalfOf;
     }
 
     String action = str(request.get("action"));

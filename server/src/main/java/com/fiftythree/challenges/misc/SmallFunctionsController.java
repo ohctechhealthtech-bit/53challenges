@@ -2,6 +2,7 @@ package com.fiftythree.challenges.misc;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
 import com.fiftythree.challenges.user.UserRepository;
 import java.net.URI;
@@ -48,6 +49,7 @@ public class SmallFunctionsController {
   private final String upstreamBase;
   private final String apiKey;
   private final HostPackagesService hostPackagesService;
+  private final CallerResolver caller;
 
   public SmallFunctionsController(
       CustomSessionVerifier customSession,
@@ -55,13 +57,15 @@ public class SmallFunctionsController {
       ObjectMapper mapper,
       @Value("${app.upstream.base-url}") String upstreamBase,
       @Value("${app.upstream.api-key}") String apiKey,
-      HostPackagesService hostPackagesService) {
+      HostPackagesService hostPackagesService,
+      CallerResolver caller) {
     this.customSession = customSession;
     this.users = users;
     this.mapper = mapper;
     this.upstreamBase = upstreamBase;
     this.apiKey = apiKey;
     this.hostPackagesService = hostPackagesService;
+    this.caller = caller;
   }
 
   // ---------------------------------------------------------------- sessionRole
@@ -118,7 +122,19 @@ public class SmallFunctionsController {
 
   /** The server's outbound IP, for whitelisting it with third parties. */
   @PostMapping("/api/apps/{appId}/functions/whatsMyIp")
-  public ResponseEntity<?> whatsMyIp() {
+  public ResponseEntity<?> whatsMyIp(@RequestBody(required = false) Map<String, Object> body) {
+    // Admin-only. This is the diagnostic for finding the address to allow on a
+    // Plesk API key, and it was reachable by anyone: it reports the server's
+    // outbound address along with whatever ipinfo.io adds about the host, and
+    // it spends an outbound request per call on a caller's say-so.
+    String sessionToken = str((body == null ? Map.of() : body).get("session_token"));
+    if (caller.email(sessionToken) == null) {
+      return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
+    }
+    if (!caller.isAdmin(sessionToken)) {
+      return ResponseEntity.status(403).body(Map.of("error", "Admin only"));
+    }
+
     // Both are asked at once and neither is allowed to fail the response: this
     // is a diagnostic, and one provider being down should still leave the other
     // answer visible.
