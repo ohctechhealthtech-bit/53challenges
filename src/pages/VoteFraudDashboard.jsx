@@ -7,7 +7,13 @@ import { challengeApi } from '@/lib/challengeApi';
 
 export default function VoteFraudDashboard() {
   const { user } = useAuth();
-  const admin = user?.email || 'admin';
+  // Never fabricate the actor. This read `user?.email || 'admin'`, so a page
+  // loaded without a session stamped the literal string "admin" into
+  // excluded_by and into the vote audit log — a false name against a decision
+  // that removes someone's vote. An empty actor is honest, and the buttons
+  // below are disabled without one.
+  const admin = user?.email || '';
+  const canAct = admin !== '';
   const [challenges, setChallenges] = useState([]);
   const [challengeId, setChallengeId] = useState('');
   const [votes, setVotes] = useState([]);
@@ -115,7 +121,7 @@ export default function VoteFraudDashboard() {
             {challenges.map((c) => <option key={c.id} value={c.id}>{c.title || c.theme}</option>)}
           </select>
         </label>
-        <button onClick={runDetection} disabled={busy} className="inline-flex items-center gap-1.5 rounded-xl grad-bg px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={runDetection} disabled={busy || !canAct} className="inline-flex items-center gap-1.5 rounded-xl grad-bg px-4 py-2 text-sm font-bold text-white disabled:opacity-50">
           <RefreshCw className={`h-4 w-4 ${busy ? 'animate-spin' : ''}`} /> Run fraud detection
         </button>
       </div>
@@ -178,7 +184,7 @@ export default function VoteFraudDashboard() {
                     <p className="truncate text-sm font-semibold">{v.user_email} → entry {v.entry_id}</p>
                     <p className="mt-0.5 text-xs text-amber-300">{v.excluded_reason || '—'} <span className="text-muted-foreground">· by {v.excluded_by || '—'} · {v.flag_type}</span></p>
                   </div>
-                  <button onClick={() => restore(v)} disabled={busy} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20">
+                  <button onClick={() => restore(v)} disabled={busy || !canAct} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500/20">
                     <RotateCcw className="h-3.5 w-3.5" /> Restore
                   </button>
                 </div>
@@ -195,7 +201,7 @@ export default function VoteFraudDashboard() {
                     <p className="truncate text-sm font-semibold">{v.user_email} → entry {v.entry_id}</p>
                     <p className="text-xs text-muted-foreground">{new Date(v.created_date).toLocaleString('en-AU')}{v.voter_verified ? ' · verified' : ' · unverified'}</p>
                   </div>
-                  <button onClick={() => exclude(v, `Manual exclusion by ${admin}`)} disabled={busy} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive hover:bg-destructive/20">
+                  <button onClick={() => exclude(v, `Manual exclusion by ${admin}`)} disabled={busy || !canAct} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-1 text-xs font-bold text-destructive hover:bg-destructive/20">
                     <Ban className="h-3.5 w-3.5" /> Exclude
                   </button>
                 </div>

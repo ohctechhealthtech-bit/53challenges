@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Share2, Link2, Check, Gift } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
 
 // Share a challenge to social media and invite friends.
 // Each share opens the platform's own share dialog in a new window.
@@ -12,11 +11,13 @@ const NETWORKS = [
 ];
 
 export default function ShareToEarn({ challengeId, title }) {
-  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  const ref = user?.email ? `?ref=${encodeURIComponent(user.email)}` : '';
-  const shareUrl = `${window.location.origin}/challenges/${challengeId}${ref}`;
+  // No referral parameter. This used to append ?ref=<the sharer's email>, so
+  // posting a challenge to social media published their address to everyone
+  // who saw the link. Nothing ever read the parameter back — no route, no
+  // function, no entity — so it leaked an identifier and bought nothing.
+  const shareUrl = `${window.location.origin}/challenges/${challengeId}`;
   const encodedUrl = encodeURIComponent(shareUrl);
   const encodedText = encodeURIComponent(`Vote in "${title}" on 53 Challenges`);
 
