@@ -2,36 +2,54 @@
 
 ## Project Context
 
-This is a Base44 app repository. Treat it as user-owned application code, keep changes focused on the user's request, and preserve existing project conventions.
+This app's backend is self-hosted Java (Spring Boot, `server/`) against MariaDB on
+Plesk, with a static React build (`src/` → `dist/`) served by nginx. It began as a
+Base44 app and was migrated in September 2026; the Base44 TypeScript that used to
+serve it has been removed, and its shape is recoverable from git history if a
+question about the original behaviour ever comes up.
 
-Start with `README.md` for local setup, environment variables, and publish workflow.
+Treat it as user-owned application code, keep changes focused on the user's
+request, and preserve existing project conventions.
 
-## Base44 References
+Start with `README.md` for local setup and environment variables.
 
-- CLI overview: https://docs.base44.com/developers/references/cli/get-started/overview.md
-- Agent skills: https://docs.base44.com/developers/backend/overview/skills.md
+## What still touches Base44
 
-If your agent supports Agent Skills, install or update Base44 skills before Base44-specific work:
-
-```bash
-npx skills add base44/skills
-```
+- **The parent Challenge API.** `CHALLENGE_API_BASE_URL` points at a separate
+  Base44 app that owns passwords and host proposals; login is delegated to it.
+  Reached through `ChallengeApiClient` and its `sibling(...)` helper.
+- **The nginx `/api/` catch-all**, which forwards the SDK's own platform calls.
+- **`FunctionFallbackController`**, a safety net for a function with no local
+  route. All 65 are ported, so it should never fire; `BASE44_FALLBACK_URL`
+  points it elsewhere, or nowhere, when Base44 is decommissioned.
+- The frontend still calls Base44's `InvokeLLM` and `SendEmail` even though the
+  Java side has a working LLM client and SES.
 
 ## Key Files
 
+- `server/`: the Java backend. One controller per ported function, under
+  `com.fiftythree.challenges`.
+- `server/src/main/resources/application.yml`: all configuration, every secret
+  via an environment variable.
 - `src/`: frontend application source.
-- `src/api/base44Client.js`: frontend Base44 SDK client.
-- `vite.config.js`: Vite config and Base44 Vite plugin setup.
-- `.env.local`: local-only environment values; never commit secrets.
+- `src/api/base44Client.js`: the SDK client, configured with `serverUrl: ''` so
+  its calls arrive at this origin.
+- `migration/smoke-test.sh`: end-to-end checks against the live system.
+- `migration/deploy.sh`: installs a built jar and keeps `app.jar.good` for rollback.
 
 ## Working Notes
 
-- Use `base44 dev` as the default local development command when you need the local Base44 backend. It can run the backend and frontend together.
-- When docs or code mention the frontend being started automatically, that usually means the Base44 project config includes `site.serveCommand`, for example `"serveCommand": "npm run dev"` in `base44/config.jsonc`.
-- Use `npm run dev` only for frontend-only work against the hosted Base44 backend.
-- Prefer the existing Base44 CLI workflow over adding new npm scripts for Base44-specific tasks.
-- Reuse the existing SDK client and Vite plugin patterns before adding new Base44 integration paths.
-- Run the relevant checks from `package.json` before finishing code changes.
+- Backend: `mvn -o clean package` in `server/` builds and runs the tests.
+- Frontend: `npm run dev` locally, `npx vite build` for a deployable `dist/`.
+- Deploy: upload the jar, run `deploy.sh`, then upload `dist/` — assets first,
+  `index.html` last.
+- Run `migration/smoke-test.sh` after a deploy. It talks to the live host, so it
+  exercises the real nginx routing rather than the app on localhost.
+- Entity query methods go in a **top-level** interface, never a nested one:
+  Spring Data does not register nested repository interfaces, which cost an
+  outage during the migration.
+- Generated entity classes under `entity/` are overwritten by
+  `migration/generate-entities.cjs`; add query methods elsewhere.
 
 ## Canonical Taxonomy
 
@@ -51,7 +69,7 @@ Interim administrative gating layer that prevents a challenge from accepting ent
 or votes until legal/compliance sign-off is complete. A challenge is "launch blocked"
 while its gate has `launch_blocked = true`.
 
-- **`ComplianceGate`** (`base44/entities/ComplianceGate.jsonc`) — per-challenge gate.
+- **`ComplianceGate`** (`server/src/main/java/com/fiftythree/challenges/entity/ComplianceGateEntity.java`) — per-challenge gate.
   - `challenge_id` (required), `challenge_title`
   - Review checklist booleans: `promoter_confirmed`, `terms_approved`,
     `minor_participation_reviewed`, `permit_position_recorded`,
@@ -67,7 +85,7 @@ while its gate has `launch_blocked = true`.
     Grandfathered challenges bypass the launch-block enforcement while still being
     tracked in the audit log, so existing public flows keep working without a
     surprise freeze.
-- **`ComplianceGateLog`** (`base44/entities/ComplianceGateLog.jsonc`) — append-only
+- **`ComplianceGateLog`** (`server/src/main/java/com/fiftythree/challenges/entity/ComplianceGateLogEntity.java`) — append-only
   audit trail. One row per gate lifecycle event: `gate_created`, `field_change`,
   `launch_unblocked`, `launch_blocked`, `enforcement_block`, `grandfathered`,
   `synced`. Captures `gate_id`, `challenge_id`, `field_name`, `old_value`,
@@ -78,7 +96,7 @@ and `cast_vote` for any challenge whose gate has `launch_blocked = true` (return
 403 and writes an `enforcement_block` log). Challenges are annotated with
 `compliance_blocked` on the client via `challengeApi.complianceStatuses`, so the UI
 hides Enter/Vote buttons and shows a paused notice. See
-`base44/shared/complianceGateHelper.ts` and `base44/functions/complianceGate/entry.ts`.
+`server/src/main/java/com/fiftythree/challenges/compliance/ComplianceGateService.java` and `server/src/main/java/com/fiftythree/challenges/compliance/ComplianceGateController.java`.
 
 ### Taxonomy Hygiene & Discovery Tags (Prompt 14)
 
@@ -116,7 +134,7 @@ assumption. The challenge owner, sponsor, or host is NEVER automatically the
 promoter — this record is the only source of truth. One per challenge, required
 before the challenge can pass the compliance gate / publish.
 
-- **`PromoterAppointment`** (`base44/entities/PromoterAppointment.jsonc`)
+- **`PromoterAppointment`** (`server/src/main/java/com/fiftythree/challenges/entity/PromoterAppointmentEntity.java`)
   - `challenge_id` (required), `promoter_type` (required): `platform53` |
     `host_organisation` | `joint`
   - `promoter_entity_name` (required), `abn`, `contact`
@@ -132,7 +150,7 @@ before the challenge can pass the compliance gate / publish.
 Voting is a full configuration record, never a yes/no flag. Absence of a
 `VotingConfiguration` for a challenge = no voting configured for that challenge.
 
-- **`VotingConfiguration`** (`base44/entities/VotingConfiguration.jsonc`)
+- **`VotingConfiguration`** (`server/src/main/java/com/fiftythree/challenges/entity/VotingConfigurationEntity.java`)
   - `challenge_id` (required), `voting_purpose` (required): `determines_winner`
     | `weighted_component` | `finalist_selection` | `audience_award_only` |
     `engagement_only`
@@ -168,12 +186,12 @@ The interim gate (Prompt 13) remains in force until lifecycle gate checks pass
 for a challenge, then its logic is superseded — fields remain visible,
 read-only for history.
 
-- **`LifecycleGate`** (`base44/entities/LifecycleGate.jsonc`) — reference data
+- **`LifecycleGate`** (`server/src/main/java/com/fiftythree/challenges/entity/LifecycleGateEntity.java`) — reference data
   defining the seven stage gates in order:
   - `code` (required): `publish` | `open_entry` | `accept_minors` |
     `open_voting` | `close_and_judge` | `publish_results` | `release_prize`
   - `name` (required), `description`, `sort_order`, `is_active`
-- **`GateCheck`** (`base44/entities/GateCheck.jsonc`) — per challenge per gate.
+- **`GateCheck`** (`server/src/main/java/com/fiftythree/challenges/entity/GateCheckEntity.java`) — per challenge per gate.
   - `challenge_id` (required), `gate_code` (required)
   - `status`: `pending` | `passed` | `blocked` (default `pending`)
   - `passed_at`, `passed_by_id`, `passed_by_email`
@@ -216,7 +234,7 @@ read-only for history.
 - `ComplianceAssessmentFinding` gained `gate` (enum, default `publish`).
 - `ComplianceAuditEvent` gained `gate_passed` and `gate_relocked` event types.
 
-**Shared helper:** `base44/shared/lifecycleGateHelper.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/lifecycle/GateEvaluator.java`
 - `evaluateGate(sr, challenge_id, gate_code)` — checks blocking findings +
   structural requirements.
 - `passGate(sr, challenge_id, gate_code, actor)` — creates/updates GateCheck,
@@ -226,7 +244,7 @@ read-only for history.
 - `isEntryBlocked` / `isVoteBlocked` / `isPublishBlocked` — enforcement
   functions used by `submitChallengeEntry`, `castVote`, and `challengeApi`.
 
-**Backend function:** `base44/functions/lifecycleGate/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/lifecycle/LifecycleGateController.java`
 - `list_gates`, `gate_status`, `check_gate`, `pass_gate`.
 
 **Engine update:** `runAssessment` in `complianceAssessmentEngine.ts` now sets
@@ -242,7 +260,7 @@ Lifecycle management for permits/authorities/notifications, feeding evidence
 into compliance findings. Validity is checked at EVERY gate evaluation, not
 just at linking time.
 
-- **`PermitOrAuthority`** (`base44/entities/PermitOrAuthority.jsonc`)
+- **`PermitOrAuthority`** (`server/src/main/java/com/fiftythree/challenges/entity/PermitOrAuthorityEntity.java`)
   - `jurisdiction_code` (required): NSW | VIC | QLD | WA | SA | TAS | ACT |
     NT | NATIONAL
   - `instrument_type` (required): `authority_multiyear` |
@@ -255,7 +273,7 @@ just at linking time.
   - `covered_challenges` (array of challenge IDs; empty = covers all)
   - `fee` (number), `documents` (array of file URLs), `notes`
 
-- **`PermitAction`** (`base44/entities/PermitAction.jsonc`)
+- **`PermitAction`** (`server/src/main/java/com/fiftythree/challenges/entity/PermitActionEntity.java`)
   - `instrument_id`, `challenge_id` (strings)
   - `action_type` (required): `apply` | `notify_regulator` | `renew` |
     `lodge_winner_records` | `publish_results_record` | `amend`
@@ -286,12 +304,12 @@ just at linking time.
 2. NSW notification action's due date = entry-open date minus 10 business days.
 3. Expiring an instrument re-locks gates on its covered challenges.
 
-**Shared helper:** `base44/shared/permitHelper.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/compliance/PermitService.java`
 - `isValidPermit`, `recheckPermitFindings`, `createNotificationActions`,
   `tryCrossRecognitionNT`, `checkExpiringInstruments`,
   `computeBusinessDaysBefore`.
 
-**Backend function:** `base44/functions/permitTracker/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/compliance/PermitTrackerController.java`
 - `list_permits`, `create_permit`, `update_permit`, `list_actions`,
   `create_action`, `complete_action`, `link_permit_to_finding`,
   `expire_check`, `check_nt_cross_recognition`.
@@ -313,7 +331,7 @@ Assembles lawyer-approved clauses into immutable TermsDocument entities for
 specific challenges, with strict STOP conditions for missing configurations
 or unsigned content.
 
-- **`ApprovedClause`** (`base44/entities/ApprovedClause.jsonc`) — clause library.
+- **`ApprovedClause`** (`server/src/main/java/com/fiftythree/challenges/entity/ApprovedClauseEntity.java`) — clause library.
   - `identifier` (required), `title` (required), `body` (required),
     `category` (required)
   - Categories: `promoter_identity`, `eligibility`, `entry_method`,
@@ -326,7 +344,7 @@ or unsigned content.
   - `legal_signoff` (object: reviewer, date, reference) — unsigned = draft
   - `effective_from`, `retirement_date`, `version`, `is_current`
 
-- **`TermsDocument`** (`base44/entities/TermsDocument.jsonc`) — assembled output.
+- **`TermsDocument`** (`server/src/main/java/com/fiftythree/challenges/entity/TermsDocumentEntity.java`) — assembled output.
   - `challenge_id` (required), `clause_versions_used` (array)
   - `merged_output` (string), `config_snapshot` (object)
   - `status`: `draft` | `reviewed` | `published` | `superseded`
@@ -346,8 +364,8 @@ or unsigned content.
 4. Published documents are immutable.
 5. Draft terms satisfy publish gate; published terms satisfy open_entry gate.
 
-**Shared helper:** `base44/shared/termsAssembler.ts`
-**Backend function:** `base44/functions/termsAssembler/entry.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/terms/TermsAssemblerService.java`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/terms/TermsAssemblerController.java`
 
 **Integration:**
 - `lifecycleGateHelper.ts` `evaluateGate` for `publish` requires a draft
@@ -362,13 +380,13 @@ or unsigned content.
 Verifiable, scope-granular guardian consent for minor participants, plus
 handling for minors appearing as subjects in entries.
 
-- **`ConsentRequirement`** (`base44/entities/ConsentRequirement.jsonc`) — reference data.
+- **`ConsentRequirement`** (`server/src/main/java/com/fiftythree/challenges/entity/ConsentRequirementEntity.java`) — reference data.
   - `name` (required), `method` (required): `guardian_email_verification` |
     `guardian_account_countersign` | `school_bulk_consent`
   - `clause_reference` (string), `description` (string)
   - `is_active` (bool), `sort_order` (number)
 
-- **`GuardianConsent`** (`base44/entities/GuardianConsent.jsonc`) — per minor per challenge.
+- **`GuardianConsent`** (`server/src/main/java/com/fiftythree/challenges/entity/GuardianConsentEntity.java`) — per minor per challenge.
   - `challenge_id` (required), `entry_id`, `participant_name` (required),
     `participant_email`
   - `requirement_id` (required), `requirement_version`
@@ -404,14 +422,14 @@ handling for minors appearing as subjects in entries.
    Consent is versioned against exact wording and scopes.
 6. `accept_minors` gate (Prompt 17) requires this workflow active and configured.
 
-**Shared helper:** `base44/shared/guardianConsentHelper.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/guardian/GuardianConsentController.java`
 - `MINIMUM_SCOPES`, `ALL_SCOPES`
 - `hasMinimumConsent`, `isEntryVisibleToPublic`, `isEntryValidForJudging`
 - `maskMinorName`, `getEligibilityBracket`, `shouldRoutePrizeToGuardian`
 - `withdrawConsent`, `evaluateAcceptMinorsGate`, `getConsentForEntry`,
   `deriveEntryConsentStatus`
 
-**Backend function:** `base44/functions/guardianConsent/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/guardian/GuardianConsentController.java`
 - `list_requirements`, `create_requirement`, `list_consents`, `get_consent`,
   `create_consent`, `grant_consent`, `decline_consent`, `withdraw_consent`,
   `check_entry_visibility`, `evaluate_minors_gate`.
@@ -431,7 +449,7 @@ marketing consent through a granular scope-based system. Effective scopes are
 calculated as an intersection of participant grants, challenge configuration,
 and clearance status.
 
-- **`RightsGrantTemplate`** (`base44/entities/RightsGrantTemplate.jsonc`) — clause
+- **`RightsGrantTemplate`** (`server/src/main/java/com/fiftythree/challenges/entity/RightsGrantTemplateEntity.java`) — clause
   library defining grantable scopes across four tiers:
   - `tier1_mandatory` — condition of entry, not declinable, not revocable:
     `display_platform`, `judging_use`, `winner_announcement`, `archival`
@@ -448,7 +466,7 @@ and clearance status.
     `version`, `legal_signoff`, `is_current`, `effective_from`,
     `retirement_date`, `sort_order`
 
-- **`ChallengeRightsConfiguration`** (`base44/entities/ChallengeRightsConfiguration.jsonc`)
+- **`ChallengeRightsConfiguration`** (`server/src/main/java/com/fiftythree/challenges/entity/ChallengeRightsConfigurationEntity.java`)
   — per-challenge rights setup:
   - `challenge_id` (required), `included_scope_versions` (array of scope objects)
   - `music_policy`: `original_or_licensed_only` | `platform_supplied_tracks` |
@@ -457,7 +475,7 @@ and clearance status.
     `incidental_ok_for_display`
   - `sponsor_use_period` (string), `marketing_contact_senders` (array)
 
-- **`ParticipantRightsRecord`** (`base44/entities/ParticipantRightsRecord.jsonc`)
+- **`ParticipantRightsRecord`** (`server/src/main/java/com/fiftythree/challenges/entity/ParticipantRightsRecordEntity.java`)
   — per participant per challenge:
   - `challenge_id` (required), `entry_id`, `participant_name` (required),
     `participant_email`, `is_minor`, `guardian_consent_id`
@@ -465,14 +483,14 @@ and clearance status.
   - `status`: `active` | `partially_revoked` | `revoked`
   - `accepted_at`, `revoked_at`, `config_snapshot`
 
-- **`MusicDeclaration`** (`base44/entities/MusicDeclaration.jsonc`) — per entry:
+- **`MusicDeclaration`** (`server/src/main/java/com/fiftythree/challenges/entity/MusicDeclarationEntity.java`) — per entry:
   - `challenge_id` (required), `entry_id`, `basis` (required): `original` |
     `licensed` | `commercial` | `platform_track`
   - `track_title`, `track_artist`, `licence_evidence`
   - `clearance_status`: `not_required` | `pending` | `cleared` | `blocked`
   - `declared_at`, `cleared_at`, `notes`
 
-- **`MediaRelease`** (`base44/entities/MediaRelease.jsonc`) — per subject:
+- **`MediaRelease`** (`server/src/main/java/com/fiftythree/challenges/entity/MediaReleaseEntity.java`) — per subject:
   - `challenge_id` (required), `entry_id`, `subject_name` (required),
     `subject_type`: `adult` | `minor`
   - `guardian_consent_id`, `scopes_released` (array)
@@ -480,7 +498,7 @@ and clearance status.
   - `release_file`, `status`: `pending` | `granted` | `declined` | `withdrawn`
   - `granted_at`, `withdrawn_at`, `notes`
 
-- **`MarketingUseLog`** (`base44/entities/MarketingUseLog.jsonc`) — audit trail:
+- **`MarketingUseLog`** (`server/src/main/java/com/fiftythree/challenges/entity/MarketingUseLogEntity.java`) — audit trail:
   - `challenge_id` (required), `entry_id`, `participant_name`
   - `used_by`: `platform` | `host`, `channel`, `description`, `url_or_file`
   - `scopes_relied_on` (array), `checked_by`, `used_at`
@@ -518,7 +536,7 @@ and clearance status.
 4. `rights_configuration` triggers fire when challenge config includes marketing
    scopes, commercial music, or third-party subjects.
 
-**Shared helper:** `base44/shared/rightsHelper.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/rights/RightsService.java`
 - `TIERS`, `TIER1_SCOPES`, `TIER2_SCOPES`, `TIER3_SCOPES`
 - `getActiveTemplates`, `getRightsConfig`, `getRightsRecordForEntry`
 - `getMusicDeclarationsForEntry`, `getMediaReleasesForEntry`,
@@ -530,7 +548,7 @@ and clearance status.
 - `assembleRightsFacts` — feeds facts to the compliance assessment engine
 - `isTemplateSigned`
 
-**Backend function:** `base44/functions/rightsManager/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/rights/RightsManagerController.java`
 - `list_templates`, `sign_template`, `list_configs`
 - `get_config`, `save_config`
 - `get_rights_summary`, `capture_rights`, `get_rights_record`
@@ -557,7 +575,7 @@ challenge. All steps run through backend functions, never direct client writes.
 - **`ChallengeDraft`** gained `challenge_id` (string, default "") — set when an
   admin approves the proposal and a native `Challenge` record is created from it.
 
-**Backend function:** `base44/functions/hostPortal/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/host/HostPortalController.java`
 
 Host actions (any authenticated user, own records only):
 - `submit_proposal` → `{ proposal }` — creates a `ChallengeDraft`
@@ -579,7 +597,7 @@ Admin actions (`role=admin`):
 - `request_changes` → `{ id, feedback }` (feedback required).
 - `decline` → `{ id, reason }` (reason required).
 
-**Payment:** `base44/functions/hostDepositCheckout/entry.ts` creates the Stripe
+**Payment:** `server/src/main/java/com/fiftythree/challenges/payments/HostDepositController.java` creates the Stripe
 Checkout session (deposit derived server-side from `delivery_level`, never from
 client input); success returns to `/my-challenge-proposals?paid=1&draft=…`,
 which finalises the proposal through `hostPortal.submit_proposal`.
@@ -592,15 +610,15 @@ Guardian verification for minor entrants (ported from 53 Classes). A minor's
 entry is gated behind an explicit guardian decision made through the API —
 complementing the scope-granular `GuardianConsent` system (Prompt 20).
 
-- **`Guardian`** (`base44/entities/Guardian.jsonc`)
+- **`Guardian`** (`server/src/main/java/com/fiftythree/challenges/entity/GuardianEntity.java`)
   - `name` (required), `email` (required, unique key), `relationship`,
     `mobile`, `address`
   - `user_id`, `verified` — set when the guardian signs in and claims the record
   - `status`: `active` | `revoked`
-- **`GuardianChild`** (`base44/entities/GuardianChild.jsonc`)
+- **`GuardianChild`** (`server/src/main/java/com/fiftythree/challenges/entity/GuardianChildEntity.java`)
   - `guardian_id`, `guardian_email`, `child_name`, `child_email` (all required)
   - `status`: `active` | `revoked`, `linked_at`
-- **`GuardianApprovalRequest`** (`base44/entities/GuardianApprovalRequest.jsonc`)
+- **`GuardianApprovalRequest`** (`server/src/main/java/com/fiftythree/challenges/entity/GuardianApprovalRequestEntity.java`)
   - `guardian_id`, `guardian_email` (required), `guardian_name`
   - `child_name`, `child_email`, `entry_id`, `entry_title`, `challenge_id`,
     `challenge_title`, `division`
@@ -629,11 +647,11 @@ complementing the scope-granular `GuardianConsent` system (Prompt 20).
    `decline_reason` (mandatory); revoke sets `consent_status: withdrawn`.
    Every decision is audit-logged via `ComplianceAuditEvent`.
 
-**Shared helper:** `base44/shared/guardianHelper.ts`
+**Shared helper:** `server/src/main/java/com/fiftythree/challenges/guardian/GuardianService.java`
 - `normEmail`, `upsertGuardian`, `linkChild`, `createApprovalRequest`,
   `applyGuardianDecision`
 
-**Backend function:** `base44/functions/guardianPortal/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/guardian/GuardianPortalController.java`
 Identity is always the authenticated account email — a guardian only sees and
 decides requests addressed to their own email.
 - `register` → `{ name, relationship, mobile, address }` claim/update guardian record
@@ -645,7 +663,7 @@ decides requests addressed to their own email.
 - `decline` → `{ request_id, reason }` (reason required)
 - `revoke` → `{ request_id, reason }` — withdraw a previously granted approval
 
-**Backend function:** `base44/functions/guardianStatusNotify/entry.ts`
+**Backend function:** `server/src/main/java/com/fiftythree/challenges/mail/GuardianNotifyController.java`
 Best-effort notifications (never block the flow):
 - `notify_request` → `{ request_id }` — emails the guardian a secure prompt to
   sign in and decide via `/guardian`
