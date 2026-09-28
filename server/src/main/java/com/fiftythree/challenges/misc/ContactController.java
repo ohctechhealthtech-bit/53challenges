@@ -1,11 +1,10 @@
 package com.fiftythree.challenges.misc;
 
 import com.fiftythree.challenges.mail.MailService;
+import com.fiftythree.challenges.support.RateLimiter;
 import com.fiftythree.challenges.user.UserRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
@@ -41,8 +40,6 @@ public class ContactController {
   private static final int MAX_SUBJECT = 200;
   private static final int MAX_MESSAGE = 5000;
 
-  private static final int MAX_PER_WINDOW = 5;
-  private static final Duration WINDOW = Duration.ofHours(1);
 
   /** Deliberately conservative: it rejects some valid addresses, and that is
    * the right trade for a form that turns into outbound mail. */
@@ -55,21 +52,11 @@ public class ContactController {
   private final UserRepository users;
 
   /**
-   * Recent submissions per source address.
+   * Submissions per source address.
    *
-   * <p>In memory, so it resets on restart and is per-instance. That is
-   * adequate for a contact form — it stops the obvious flood without needing
-   * shared state — and it is stated plainly rather than implied.
+   * <p>Five an hour is generous for a contact form and useless as a relay.
    */
-  private final Map<String, Window> recent = new LinkedHashMap<>() {
-    @Override
-    protected boolean removeEldestEntry(Map.Entry<String, Window> eldest) {
-      // Bounded, so the limiter cannot itself become the memory leak.
-      return size() > 10_000;
-    }
-  };
-
-  private record Window(Instant start, int count) {}
+  private final RateLimiter submissions = new RateLimiter(5, Duration.ofHours(1));
 
   public ContactController(MailService mail, UserRepository users) {
     this.mail = mail;
@@ -94,7 +81,7 @@ public class ContactController {
       return ResponseEntity.badRequest()
           .body(Map.of("error", "That email address does not look right."));
     }
-    if (!allow(clientAddress(http))) {
+    if (!submissions.allow(clientAddress(http))) {
       return ResponseEntity.status(429)
           .body(Map.of("error", "Too many messages from here. Please try again later."));
     }
@@ -120,21 +107,6 @@ public class ContactController {
           "We could not deliver your message. Please email us directly."));
     }
     return ResponseEntity.ok(Map.of("ok", true));
-  }
-
-  /** Whether this source may send another message now. */
-  private synchronized boolean allow(String key) {
-    Instant now = Instant.now();
-    Window window = recent.get(key);
-    if (window == null || window.start().isBefore(now.minus(WINDOW))) {
-      recent.put(key, new Window(now, 1));
-      return true;
-    }
-    if (window.count() >= MAX_PER_WINDOW) {
-      return false;
-    }
-    recent.put(key, new Window(window.start(), window.count() + 1));
-    return true;
   }
 
   /**

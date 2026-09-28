@@ -7,6 +7,7 @@ import com.fiftythree.challenges.compliance.ComplianceAuditService;
 import com.fiftythree.challenges.lifecycle.LifecycleGateService;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
 import com.fiftythree.challenges.security.JwtService;
+import com.fiftythree.challenges.support.RateLimiter;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
 import com.fiftythree.challenges.support.ApiErrors;
 import java.net.URI;
@@ -91,6 +92,10 @@ public class ChallengeApiController {
   private final ComplianceAuditService audit;
   private final CustomSessionVerifier sessions;
   private final JwtService jwt;
+
+  /** Sign-in attempts per address. See AuthController for the reasoning. */
+  private final RateLimiter loginAttempts =
+      new RateLimiter(10, java.time.Duration.ofMinutes(15));
   private final ObjectMapper mapper;
   private final String googleClientId;
 
@@ -256,10 +261,22 @@ public class ChallengeApiController {
       return googleLogin(str(request.get("access_token")));
     }
 
+    if ("login".equals(action)) {
+      // The site's real sign-in path — the one a password-guessing attempt
+      // would use, since /api/auth/login is not what the frontend calls.
+      // Counted by address for the same reason as there.
+      String attempted = str(request.get("email")).toLowerCase().trim();
+      if (!attempted.isEmpty() && !loginAttempts.allow(attempted)) {
+        return ResponseEntity.status(429).body(Map.of(
+            "error", "Too many sign-in attempts. Please wait a few minutes and try again."));
+      }
+    }
+
     Map<String, Object> payload = new LinkedHashMap<>(request);
     UpstreamResponse res = upstream.postTo(upstream.sibling("publicChallengeApi"), payload);
 
     if ("login".equals(action) && res.status() / 100 == 2) {
+      loginAttempts.clear(str(request.get("email")).toLowerCase().trim());
       return ResponseEntity.ok(attachSessionToken(res.body()));
     }
     if ("google_config".equals(action) && !googleClientId.isBlank()

@@ -2,6 +2,8 @@ package com.fiftythree.challenges.auth;
 
 import com.fiftythree.challenges.llm.LlmClient;
 import com.fiftythree.challenges.mail.MailService;
+import com.fiftythree.challenges.support.RateLimiter;
+import java.time.Duration;
 import com.fiftythree.challenges.payments.StripeClient;
 import com.fiftythree.challenges.security.JwtService;
 import jakarta.validation.constraints.Email;
@@ -109,14 +111,39 @@ public class AuthController {
     return out;
   }
 
+  /**
+   * Sign-in attempts per address.
+   *
+   * <p>There was no limit at all, which makes this the cheapest place to try
+   * a list of leaked passwords. Counting by address rather than by IP is the
+   * trade that matters here: an attacker spreads across addresses easily and
+   * across accounts less so, and it means one noisy network cannot lock out
+   * everyone behind it.
+   *
+   * <p>Ten in fifteen minutes is far above real use — a person who has
+   * forgotten their password tries three or four times — and far below the
+   * rate any guessing attack needs.
+   */
+  private final RateLimiter loginAttempts = new RateLimiter(10, Duration.ofMinutes(15));
+
   @PostMapping("/auth/login")
   public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
-    var user = upstream.login(request.email().toLowerCase().trim(), request.password());
+    String email = request.email().toLowerCase().trim();
+    if (!loginAttempts.allow(email)) {
+      return ResponseEntity.status(429).body(Map.of(
+          "error", "Too many sign-in attempts. Please wait a few minutes and try again."));
+    }
+
+    var user = upstream.login(email, request.password());
     if (user == null) {
       // One message for both "no such account" and "wrong password", so the
       // endpoint cannot be used to enumerate registered addresses.
       return ResponseEntity.status(401).body(Map.of("error", "Invalid email or password."));
     }
+    // A successful sign-in clears the count, so someone who mistyped twice and
+    // then got it right is not left part-way to locked out.
+    loginAttempts.clear(email);
+
     String token = jwt.issue(user.email(), user.name(), user.uid());
     return ResponseEntity.ok(Map.of(
         "success", true,
