@@ -2,6 +2,7 @@ package com.fiftythree.challenges.domain;
 
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -98,7 +99,7 @@ public class ChallengeDomainController {
       return ResponseEntity.badRequest().body(Map.of("error", "Unknown action"));
     } catch (Exception e) {
       log.error("challengeDomains action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

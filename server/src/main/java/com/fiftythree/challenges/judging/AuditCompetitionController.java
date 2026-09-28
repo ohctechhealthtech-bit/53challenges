@@ -16,6 +16,7 @@ import com.fiftythree.challenges.prize.PrizeLedgerQueryRepository;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.vote.VoteRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -157,7 +158,7 @@ public class AuditCompetitionController {
       };
     } catch (Exception e) {
       log.error("auditCompetition action '{}' failed for {}", action, competitionId, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

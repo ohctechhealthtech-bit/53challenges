@@ -7,6 +7,7 @@ import com.fiftythree.challenges.entity.ChallengeEntity;
 import com.fiftythree.challenges.entity.ChallengeRepository;
 import com.fiftythree.challenges.entity.EntryEntity;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
@@ -135,7 +136,7 @@ public class ActivityReportController {
           "categories", categoryRows));
     } catch (Exception e) {
       log.error("activityReport failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

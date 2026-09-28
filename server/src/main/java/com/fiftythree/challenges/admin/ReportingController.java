@@ -14,6 +14,7 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.user.UserRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -96,7 +97,7 @@ public class ReportingController {
           : scoped(challengeId, allScores, allAssignments);
     } catch (Exception e) {
       log.error("reporting failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

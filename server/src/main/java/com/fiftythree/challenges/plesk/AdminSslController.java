@@ -3,6 +3,7 @@ package com.fiftythree.challenges.plesk;
 import com.fiftythree.challenges.entity.AdminSslConfigurationEntity;
 import com.fiftythree.challenges.entity.AdminSslConfigurationRepository;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Base64;
@@ -75,7 +76,7 @@ public class AdminSslController {
             Map.of("error", "Unknown action: " + action));
       };
     } catch (PrivateFileStore.StorageException e) {
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     } catch (Exception e) {
       // Deliberately opaque. This handler has had certificate and key material
       // in scope, and an exception message here could carry a fragment of it.

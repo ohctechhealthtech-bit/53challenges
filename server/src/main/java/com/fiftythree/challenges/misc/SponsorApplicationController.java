@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fiftythree.challenges.entity.EmailVerificationEntity;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.verification.EmailVerificationService;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +107,7 @@ public class SponsorApplicationController {
               result.path("application_id").asText(""), result.path("id").asText(""))));
     } catch (Exception e) {
       log.error("sponsorApplication failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

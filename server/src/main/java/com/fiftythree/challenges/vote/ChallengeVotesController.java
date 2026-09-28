@@ -1,6 +1,7 @@
 package com.fiftythree.challenges.vote;
 
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -59,7 +60,7 @@ public class ChallengeVotesController {
       return ResponseEntity.ok(perChallenge(challengeId, str(request.get("user_email"))));
     } catch (Exception e) {
       log.error("challengeVotes failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

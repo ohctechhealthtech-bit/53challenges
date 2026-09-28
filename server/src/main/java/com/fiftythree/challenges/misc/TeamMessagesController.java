@@ -2,6 +2,7 @@ package com.fiftythree.challenges.misc;
 
 import com.fiftythree.challenges.entity.MessageEntity;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -117,7 +118,7 @@ public class TeamMessagesController {
       }
     } catch (Exception e) {
       log.error("teamMessages action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

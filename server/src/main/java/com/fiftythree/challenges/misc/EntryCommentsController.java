@@ -2,6 +2,7 @@ package com.fiftythree.challenges.misc;
 
 import com.fiftythree.challenges.entity.EntryCommentEntity;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +87,7 @@ public class EntryCommentsController {
       return ResponseEntity.ok(Map.of("comment", comments.save(comment)));
     } catch (Exception e) {
       log.error("entryComments action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

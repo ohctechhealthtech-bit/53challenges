@@ -8,6 +8,7 @@ import com.fiftythree.challenges.entity.RateCardEntity;
 import com.fiftythree.challenges.entity.SavedQuoteEntity;
 import com.fiftythree.challenges.entity.ServiceTierRepository;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -91,7 +92,7 @@ public class PricingCalculatorController {
       };
     } catch (Exception e) {
       log.error("pricingCalculator action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

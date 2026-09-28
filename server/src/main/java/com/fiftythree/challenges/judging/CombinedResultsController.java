@@ -8,6 +8,7 @@ import com.fiftythree.challenges.entity.ScoreEntity;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.vote.VoteRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -215,7 +216,7 @@ public class CombinedResultsController {
           "weights", Map.of("judge", jw, "public", pw)));
     } catch (Exception e) {
       log.error("computeCombinedResults failed for panel {}", panelId, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

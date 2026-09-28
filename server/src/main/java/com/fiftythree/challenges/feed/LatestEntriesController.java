@@ -5,6 +5,7 @@ import com.fiftythree.challenges.engine.EntryQueryRepository;
 import com.fiftythree.challenges.entity.EntryEntity;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.vote.VoteRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -183,7 +184,7 @@ public class LatestEntriesController {
           "count", recent.size()));
     } catch (Exception e) {
       log.error("latestEntries failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

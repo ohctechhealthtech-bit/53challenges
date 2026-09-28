@@ -3,6 +3,7 @@ package com.fiftythree.challenges.vote;
 import com.fiftythree.challenges.entity.VoteAuditLogEntity;
 import com.fiftythree.challenges.entity.VoteAuditLogRepository;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -99,7 +100,7 @@ public class VoteFraudController {
           "byReason", Map.of("duplicate_account", duplicates, "vote_spike", spikes)));
     } catch (Exception e) {
       log.error("detectVoteFraud failed for challenge {}", challengeId, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

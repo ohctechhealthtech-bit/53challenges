@@ -6,6 +6,7 @@ import com.fiftythree.challenges.entity.CompetitionAssignmentEntity;
 import com.fiftythree.challenges.entity.PrizePayoutEntity;
 import com.fiftythree.challenges.judging.CompetitionAssignmentQueryRepository;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -85,7 +86,7 @@ public class PrizePayoutActionController {
       };
     } catch (Exception e) {
       log.error("prizePayoutAction '{}' failed for {}", action, payoutId, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

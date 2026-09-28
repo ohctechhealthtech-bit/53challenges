@@ -4,6 +4,7 @@ import com.fiftythree.challenges.admin.JudgeRepo;
 import com.fiftythree.challenges.entity.JudgeProfileEntity;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -143,7 +144,7 @@ public class MyApplicationsController {
       return ResponseEntity.ok(Map.of("items", items, "count", items.size()));
     } catch (Exception e) {
       log.error("myApplications failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

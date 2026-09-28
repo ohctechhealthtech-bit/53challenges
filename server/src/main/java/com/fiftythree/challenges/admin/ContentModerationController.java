@@ -8,6 +8,7 @@ import com.fiftythree.challenges.entity.ChallengeRepository;
 import com.fiftythree.challenges.entity.EntryEntity;
 import com.fiftythree.challenges.host.HostAccessService;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -81,7 +82,7 @@ public class ContentModerationController {
       };
     } catch (Exception e) {
       log.error("contentModeration action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

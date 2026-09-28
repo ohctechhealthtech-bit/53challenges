@@ -5,6 +5,7 @@ import com.fiftythree.challenges.entity.JudgeProfileRepository;
 import com.fiftythree.challenges.entity.SponsorProfileEntity;
 import com.fiftythree.challenges.entity.SponsorProfileRepository;
 import com.fiftythree.challenges.support.JsonColumn;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -86,7 +87,7 @@ public class PublicPanelController {
       return ResponseEntity.ok(Map.of("judges", judgeList, "sponsors", sponsorList));
     } catch (Exception e) {
       log.error("publicPanel failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

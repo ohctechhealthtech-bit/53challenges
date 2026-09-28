@@ -8,6 +8,7 @@ import com.fiftythree.challenges.lifecycle.LifecycleGateService;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
 import com.fiftythree.challenges.security.JwtService;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -137,7 +138,7 @@ public class ChallengeApiController {
       return write(action, request);
     } catch (Exception e) {
       log.error("challengeApi action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

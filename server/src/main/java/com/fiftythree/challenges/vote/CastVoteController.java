@@ -7,6 +7,7 @@ import com.fiftythree.challenges.entity.EntryEntity;
 import com.fiftythree.challenges.lifecycle.LifecycleGateService;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -132,7 +133,7 @@ public class CastVoteController {
           "success", true, "votes", votes.countValidForEntry(entryId)));
     } catch (Exception e) {
       log.error("castVote failed for entry {} challenge {}", entryId, challengeId, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

@@ -10,6 +10,7 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.vote.VoteEntity;
 import com.fiftythree.challenges.vote.VoteRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -123,7 +124,7 @@ public class MyStuffController {
       return ResponseEntity.ok(Map.of("entries", out, "count", out.size()));
     } catch (Exception e) {
       log.error("myEntries failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 
@@ -217,7 +218,7 @@ public class MyStuffController {
       return ResponseEntity.ok(Map.of("entries", out, "count", out.size()));
     } catch (Exception e) {
       log.error("myVotes failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

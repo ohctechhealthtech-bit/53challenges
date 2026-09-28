@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { detectVoteFraud, logVoteAudit, normalizeEmail } from '@/lib/votes';
 import { challengeApi } from '@/lib/challengeApi';
 
+const VOTE_CAP = 5000;
+
 export default function VoteFraudDashboard() {
   const { user } = useAuth();
   // Never fabricate the actor. This read `user?.email || 'admin'`, so a page
@@ -17,6 +19,7 @@ export default function VoteFraudDashboard() {
   const [challenges, setChallenges] = useState([]);
   const [challengeId, setChallengeId] = useState('');
   const [votes, setVotes] = useState([]);
+  const [truncated, setTruncated] = useState(false);
   const [log, setLog] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -27,10 +30,15 @@ export default function VoteFraudDashboard() {
     try {
       const chRes = await challengeApi.listChallenges({ status: 'active', limit: 200 });
       setChallenges(chRes?.challenges || []);
+      // 5000 is the entity API's own ceiling (EntityApiController.MAX_LIMIT).
+      // This asked for 100,000 and silently received 5000 — a fraud dashboard
+      // that quietly hides records is worse than one that says it is looking
+      // at a subset, so the cap is named here and reported below.
       const all = challengeId
-        ? await base44.entities.Vote.filter({ challenge_id: challengeId }, '-created_date', 100000)
-        : await base44.entities.Vote.list('-created_date', 100000);
+        ? await base44.entities.Vote.filter({ challenge_id: challengeId }, '-created_date', VOTE_CAP)
+        : await base44.entities.Vote.list('-created_date', VOTE_CAP);
       setVotes(all || []);
+      setTruncated((all || []).length >= VOTE_CAP);
       const lg = challengeId
         ? await base44.entities.VoteAuditLog.filter({ challenge_id: challengeId }, '-at', 500).catch(() => [])
         : await base44.entities.VoteAuditLog.list('-at', 500).catch(() => []);
@@ -126,6 +134,13 @@ export default function VoteFraudDashboard() {
         </button>
       </div>
 
+
+      {truncated && (
+        <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          Showing the {VOTE_CAP.toLocaleString()} most recent votes — there are more than this.
+          Pick a single challenge to narrow the view before drawing conclusions.
+        </div>
+      )}
       {lastScan && (
         <div className="mt-4 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3 text-sm">
           Scan complete: {lastScan.scanned} votes scanned · {lastScan.flagged} flagged

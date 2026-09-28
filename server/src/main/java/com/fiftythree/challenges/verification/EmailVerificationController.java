@@ -1,5 +1,6 @@
 package com.fiftythree.challenges.verification;
 
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -66,7 +67,7 @@ public class EmailVerificationController {
       return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     } catch (Exception e) {
       log.error("emailVerification action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

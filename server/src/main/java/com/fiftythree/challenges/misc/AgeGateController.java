@@ -2,6 +2,7 @@ package com.fiftythree.challenges.misc;
 
 import com.fiftythree.challenges.entity.AgeAttestationEntity;
 import com.fiftythree.challenges.security.CallerResolver;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.Period;
@@ -84,7 +85,7 @@ public class AgeGateController {
       return ResponseEntity.ok(Map.of("ok", true, "age", age));
     } catch (Exception e) {
       log.error("recordAgeGate failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

@@ -15,6 +15,7 @@ import com.fiftythree.challenges.lifecycle.LifecycleGateService;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.verification.EmailVerificationService;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -116,7 +117,7 @@ public class SubmitChallengeEntryController {
       };
     } catch (Exception e) {
       log.error("submitChallengeEntry action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

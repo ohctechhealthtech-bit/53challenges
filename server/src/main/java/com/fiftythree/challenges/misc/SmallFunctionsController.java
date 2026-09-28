@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.security.CustomSessionVerifier;
 import com.fiftythree.challenges.user.UserRepository;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -91,7 +92,7 @@ public class SmallFunctionsController {
       return ResponseEntity.ok(Map.of("email", session.email(), "role", role));
     } catch (Exception e) {
       log.error("sessionRole failed", e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 
@@ -239,7 +240,7 @@ public class SmallFunctionsController {
           .body(response.body());
     } catch (Exception e) {
       log.error("Upstream proxy to {} failed", url, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

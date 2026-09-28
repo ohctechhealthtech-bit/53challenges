@@ -7,6 +7,7 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -92,7 +93,7 @@ public class JudgesMasterController {
       return ResponseEntity.badRequest().body(Map.of("error", "Unknown action: " + action));
     } catch (Exception e) {
       log.error("judgesMaster action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

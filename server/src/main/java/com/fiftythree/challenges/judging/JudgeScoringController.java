@@ -13,6 +13,7 @@ import com.fiftythree.challenges.entity.JudgingPanelRepository;
 import com.fiftythree.challenges.entity.ScoreEntity;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -98,7 +99,7 @@ public class JudgeScoringController {
       };
     } catch (Exception e) {
       log.error("judgeScoring action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 

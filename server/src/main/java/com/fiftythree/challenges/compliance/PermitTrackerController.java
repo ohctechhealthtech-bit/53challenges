@@ -7,6 +7,7 @@ import com.fiftythree.challenges.entity.RegulatoryRuleVersionRepository;
 import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.support.JsonColumn;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiftythree.challenges.support.ApiErrors;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +88,7 @@ public class PermitTrackerController {
       };
     } catch (Exception e) {
       log.error("permitTracker action '{}' failed", action, e);
-      return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+      return ApiErrors.internal(e);
     }
   }
 
