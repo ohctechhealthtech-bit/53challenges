@@ -9,14 +9,18 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Gavel, ShieldAlert } from 'lucide-react';
 import { pickNum } from '@/lib/judgeApi';
-import { isAttested } from '@/lib/judgeAttestation';
+import { useAttested } from '@/lib/judgeAttestation';
 import AttestationGate from '@/components/judge/AttestationGate';
 
 export default function AcceptedAssignmentCard({ row, scopeKey, onRespond, onJudge }) {
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [gateOpen, setGateOpen] = useState(false);
-  const attested = isAttested(scopeKey);
+  // The hook, not the bare read: isAttested is synchronous, and the server's
+  // answer arrives after the first render. Reading it directly meant the card
+  // decided from the stale local flag and never re-rendered when the real
+  // answer landed — so the gate never appeared and nothing was recorded.
+  const attested = useAttested(scopeKey);
 
   const entries = pickNum(row, ['entry_count', 'entries', 'entries_total', 'total'], 0);
   const scored = pickNum(row, ['scored', 'entries_scored', 'my_scored'], 0);
