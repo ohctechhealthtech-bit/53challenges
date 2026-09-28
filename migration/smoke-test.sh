@@ -206,6 +206,15 @@ expect "computeCombinedResults refuses an anonymous caller" 401 "$(status "$r")"
 r=$(call guardianStatusNotify '{"request_id":"x","action":"notify_request"}')
 expect "guardianStatusNotify refuses an anonymous caller" 401 "$(status "$r")" "$(body "$r")"
 
+# Consent records carry guardian names, contacts and participant emails for
+# children. Any signed-in account could read them, and list_consents takes a
+# challenge id, so the whole set was enumerable.
+r=$(call guardianConsent '{"action":"list_consents","challenge_id":"x"}')
+expect "guardianConsent list_consents needs a session" 401 "$(status "$r")" "$(body "$r")"
+
+r=$(call contactUs '{"name":"","email":"","message":""}')
+expect "contactUs rejects an empty submission" 400 "$(status "$r")" "$(body "$r")"
+
 # Anything not yet ported must still answer, via the Base44 fallback.
 r=$(call challengeApi '{"action":"challenges","id":"6aaa7e0a99df11bc8bcc649b"}')
 if printf '%s' "$(body "$r")" | grep -q 'Singing Challenge'; then

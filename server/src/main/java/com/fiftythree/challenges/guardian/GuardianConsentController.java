@@ -76,8 +76,13 @@ public class GuardianConsentController {
         case "list_requirements" -> ResponseEntity.ok(
             Map.of("requirements", requirements.findAll()));
         case "create_requirement" -> isAdmin ? createRequirement(request) : adminOnly();
-        case "list_consents" -> listConsents(request);
-        case "get_consent" -> getConsent(request);
+        // Admin-only. These return guardian names, addresses and participant
+        // emails — contact details for children and their guardians. Any
+        // signed-in account could read them, and list_consents takes a
+        // challenge id, so the whole set was enumerable. The only caller is
+        // ConsentPanel on the compliance admin page; get_consent has none.
+        case "list_consents" -> isAdmin ? listConsents(request) : adminOnly();
+        case "get_consent" -> isAdmin ? getConsent(request) : adminOnly();
         case "create_consent" -> createConsent(request);
         case "grant_consent" -> isAdmin ? grant(request) : adminOnly();
         case "decline_consent" -> isAdmin ? decline(request) : adminOnly();
