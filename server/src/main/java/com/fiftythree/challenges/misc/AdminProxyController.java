@@ -42,9 +42,24 @@ public class AdminProxyController {
       return error(400, "missing_action", "Missing action");
     }
 
+    // The actor is taken from the session, never from params. An admin's own
+    // actingEmail arrives in the body, and the parent records it as the name
+    // against the action — so a caller could attribute a funds movement or a
+    // scoring override to a colleague. Admin is already required to get here,
+    // so this is not a way in; it is a way to be someone else in the log,
+    // which is the part of an audit trail that has to hold.
+    Map<String, Object> params = new LinkedHashMap<>();
+    Object given = request.get("params");
+    if (given instanceof Map<?, ?> m) {
+      m.forEach((k, v) -> params.put(String.valueOf(k), v));
+    }
+    String actor = str(caller.email(str(request.get("session_token"))));
+    params.put("actingEmail", actor);
+    params.put("acting_email", actor);
+
     Map<String, Object> payload = new LinkedHashMap<>();
     payload.put("action", action);
-    payload.put("params", request.get("params") == null ? Map.of() : request.get("params"));
+    payload.put("params", params);
 
     UpstreamResponse res = upstream.postTo(upstream.sibling("adminChallengeApi"), payload);
 

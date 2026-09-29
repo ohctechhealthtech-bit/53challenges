@@ -2,9 +2,14 @@ import { ExternalLink } from 'lucide-react';
 import ApprovalThumb from '@/components/admin/approvals/ApprovalThumb';
 import ApprovalActionButtons from '@/components/admin/approvals/ApprovalActionButtons';
 import { REVIEW_LABELS, fmtDate } from '@/components/admin/approvals/approvalMeta';
+import { safeExternalUrl } from '@/lib/safeUrl';
 
 export default function ApprovalRow({ row, busy, onPreview, onApprove, onReject }) {
-  const openUrl = row.external_link || row.work_url;
+  // The entrant supplies this and an admin clicks it from the moderation
+  // queue — the reader with the most authority, on the least trusted content.
+  // A javascript: href would run as them, and rel="noreferrer" does nothing
+  // about that.
+  const openUrl = safeExternalUrl(row.external_link) || safeExternalUrl(row.work_url);
   const tags = [row.division_name || row.division_id, ...(row.location_tags || [])].filter(Boolean);
 
   return (
