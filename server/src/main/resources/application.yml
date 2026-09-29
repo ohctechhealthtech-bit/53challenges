@@ -25,6 +25,17 @@ server:
   # limits on verification codes and login key on the email address and were
   # never affected.
   forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      # Set explicitly rather than relying on the strategy's defaults. The
+      # protocol header is what tells the app the request arrived over HTTPS;
+      # without it every absolute URL it builds comes out http:// and browsers
+      # block the mixed content. internal-proxies is Tomcat's own default
+      # written out — loopback and the private ranges — and it is the list
+      # RemoteIpValve walks back through to find the real client.
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+      internal-proxies: '10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.1[6-9]{1}\.\d{1,3}\.\d{1,3}|172\.2[0-9]{1}\.\d{1,3}\.\d{1,3}|172\.3[0-1]{1}\.\d{1,3}\.\d{1,3}|0:0:0:0:0:0:0:1|::1'
 
 spring:
   application:

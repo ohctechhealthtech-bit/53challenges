@@ -255,6 +255,9 @@ public class PrizeLedgerController {
   }
 
 
+  /** Ten million dollars: well above any real prize, well below absurd. */
+  private static final double MAX_AMOUNT = 10_000_000d;
+
   /**
    * A money amount, or null when it is not one.
    *
@@ -267,7 +270,11 @@ public class PrizeLedgerController {
       return 0d;
     }
     double amount = toDouble(value);
-    if (!Double.isFinite(amount) || amount < 0) {
+    // An upper bound as well as a lower one. Nothing here is a prize worth
+    // ten million dollars, so a value above it is a typo with extra zeros or
+    // a paste into the wrong field, and a ledger is the wrong place to find
+    // that out later.
+    if (!Double.isFinite(amount) || amount < 0 || amount > MAX_AMOUNT) {
       return null;
     }
     return amount;
