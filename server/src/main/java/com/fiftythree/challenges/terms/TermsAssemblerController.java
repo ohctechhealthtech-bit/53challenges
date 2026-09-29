@@ -206,8 +206,18 @@ public class TermsAssemblerController {
     }
 
     ApprovedClauseEntity clause = found.get();
+    // Who typed it as well as who is named. The reviewer is free text on
+    // purpose — an admin records a sign-off by an external legal reviewer,
+    // who has no account here — but the stored record is what someone reads
+    // later as "who signed this", and a typed name alone cannot answer that.
+    // The action is admin-only and the audit log already holds the real
+    // actor; this puts it on the artefact itself.
     clause.setLegalSignoff(writeObject(Map.of(
-        "reviewer", reviewer, "date", date, "reference", reference)));
+        "reviewer", reviewer,
+        "date", date,
+        "reference", reference,
+        "recorded_by", email == null ? "" : email,
+        "recorded_at", Instant.now().toString())));
     clause.setUpdatedDate(Instant.now());
     clauses.save(clause);
 

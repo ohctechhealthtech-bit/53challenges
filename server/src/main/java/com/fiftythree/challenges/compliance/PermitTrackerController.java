@@ -74,8 +74,14 @@ public class PermitTrackerController {
 
     try {
       return switch (action) {
-        case "list_permits" -> listPermits(request);
-        case "list_actions" -> listActions(request);
+        // Admin, like every write below. These returned every permit to any
+        // signed-in account: holder names, reference numbers, fees and notes
+        // for regulatory instruments belonging to other organisations. The
+        // only screen that reads them is the compliance admin page, whose
+        // route is not itself gated — so the server is where it has to be
+        // decided, as it already was for creating and updating the same rows.
+        case "list_permits" -> isAdmin ? listPermits(request) : adminOnly();
+        case "list_actions" -> isAdmin ? listActions(request) : adminOnly();
         case "create_permit" -> isAdmin ? createPermit(request) : adminOnly();
         case "update_permit" -> isAdmin ? updatePermit(request) : adminOnly();
         case "create_action" -> isAdmin ? createAction(request) : adminOnly();

@@ -44,11 +44,17 @@ class RateLimiterTest {
 
   @Test
   void aWindowThatHasPassedStartsAgain() throws Exception {
-    RateLimiter limiter = new RateLimiter(1, Duration.ofMillis(50));
+    // 500ms, not 50. The two calls below are consecutive and should both fall
+    // inside one window, but under load — a build downloading dependencies,
+    // say — 50ms elapsed between them and the second opened a new window.
+    // The test then failed for a reason that had nothing to do with the
+    // limiter. A window wide enough to survive a slow machine tests the same
+    // behaviour and only fails when the behaviour is wrong.
+    RateLimiter limiter = new RateLimiter(1, Duration.ofMillis(500));
 
     assertTrue(limiter.allow("a"));
     assertFalse(limiter.allow("a"));
-    Thread.sleep(80);
+    Thread.sleep(700);
     assertTrue(limiter.allow("a"), "a new window starts once the old one has passed");
   }
 }
