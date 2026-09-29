@@ -112,10 +112,17 @@ public class ContactController {
   /**
    * The caller's address.
    *
-   * <p>{@code server.forward-headers-strategy: framework} is set, so Spring
-   * has already applied X-Forwarded-For from our nginx by the time this runs
-   * and getRemoteAddr returns the real client. Parsing the header again here
-   * would second-guess that, and get it wrong the day the proxy changes.
+   * <p>{@code server.forward-headers-strategy: native} is set, so Tomcat's
+   * RemoteIpValve has already resolved X-Forwarded-For by the time this runs
+   * and getRemoteAddr returns the address nginx observed. Parsing the header
+   * again here would second-guess that, and get it wrong the day the proxy
+   * changes.
+   *
+   * <p>The strategy matters more than it looks. nginx appends to
+   * X-Forwarded-For rather than replacing it, so a caller can put an address
+   * of their choosing in front of their own. Under the previous "framework"
+   * setting that leading value won, and this limit — which keys on exactly
+   * this string — could be stepped around by changing a header.
    */
   private static String clientAddress(HttpServletRequest http) {
     String address = http.getRemoteAddr();

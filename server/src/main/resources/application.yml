@@ -10,8 +10,21 @@ server:
   # Trust X-Forwarded-Proto/For from nginx, so the app knows the request really
   # arrived over HTTPS. Without this any absolute URL it builds — redirects,
   # links in emails — comes out as http:// and browsers block the mixed content.
-  # Safe here precisely because the app is unreachable except through nginx.
-  forward-headers-strategy: framework
+  #
+  # "native" rather than "framework". Both read the header; they disagree on
+  # which entry is the client. nginx sets X-Forwarded-For with
+  # $proxy_add_x_forwarded_for, which APPENDS the real peer to whatever the
+  # caller already sent — so a request carrying "X-Forwarded-For: 1.2.3.4"
+  # arrives as "1.2.3.4, <real client>". framework takes the leftmost and
+  # would have believed 1.2.3.4. native uses Tomcat's RemoteIpValve, which
+  # walks from the right through addresses it recognises as internal proxies
+  # and stops at the first it does not — the address nginx itself observed.
+  #
+  # It matters because the contact form's rate limit keys on this address: a
+  # spammer rotating a header would otherwise have had no limit at all. The
+  # limits on verification codes and login key on the email address and were
+  # never affected.
+  forward-headers-strategy: native
 
 spring:
   application:

@@ -52,6 +52,30 @@ public class SecurityConfig {
             // a 404 report itself as a 404.
             .requestMatchers("/error").permitAll()
             .anyRequest().authenticated())
+        // Security headers on every API response.
+        //
+        // The SPA's index.html carries a Content-Security-Policy in a meta
+        // tag, which covers the script and style directives but cannot carry
+        // frame-ancestors: a meta policy is read after the document is already
+        // being framed, so the browser ignores it there. That left the site
+        // with no clickjacking defence at all, and no HSTS, because nginx
+        // sends no security headers of its own.
+        //
+        // What is set here protects the API. The document itself is served by
+        // nginx and needs the same headers there — see migration/DEPLOY-JAVA.md.
+        .headers(h -> h
+            .frameOptions(f -> f.deny())
+            .contentTypeOptions(c -> {})
+            .referrerPolicy(r -> r.policy(
+                org.springframework.security.web.header.writers
+                    .ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+            .httpStrictTransportSecurity(s -> s
+                .includeSubDomains(true)
+                .maxAgeInSeconds(31536000))
+            // An API response is never a document, so it needs nothing beyond
+            // refusing to be one.
+            .contentSecurityPolicy(c -> c.policyDirectives(
+                "default-src 'none'; frame-ancestors 'none'")))
         // 401 rather than Spring's default 403 for anonymous requests.
         .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))
         .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

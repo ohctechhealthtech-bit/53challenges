@@ -363,3 +363,24 @@ The health endpoint now opens a real connection and returns 503 when it cannot.
 Worth keeping in mind for the remaining 64 functions: **a check that cannot
 fail proves nothing**, and the fallbacks that stop a database fault from
 looking like an auth failure are the same fallbacks that hide the fault.
+
+## Security headers (nginx)
+
+The SPA's `index.html` carries a Content-Security-Policy in a `<meta>` tag.
+That covers `script-src` and `style-src`, but a meta policy **cannot** carry
+`frame-ancestors` — the browser reads it after the document is already being
+framed. nginx sends no security headers of its own, so until these are added
+the site has no clickjacking defence and no HSTS.
+
+Paste `migration/nginx-security-headers.conf` into **Plesk → Domains →
+53challenges.com → Apache & nginx Settings → Additional nginx directives**,
+then apply.
+
+Verify:
+
+```bash
+curl -s -I https://53challenges.com/ | grep -iE 'frame-options|strict-transport|content-type-options|referrer-policy|content-security'
+```
+
+Five headers should come back. The Java app sets equivalents on `/api/`
+responses itself; these cover the document, which nginx serves directly.
