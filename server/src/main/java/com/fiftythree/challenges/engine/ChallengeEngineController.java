@@ -156,9 +156,7 @@ public class ChallengeEngineController {
       if (!isAdmin && !publiclyListable(e)) {
         continue;
       }
-      Map<String, Object> safe = mapper.convertValue(e, new com.fasterxml.jackson.core.type.TypeReference<>() {});
-      // Entrant email addresses are never sent to a client.
-      safe.remove("creator_email");
+      Map<String, Object> safe = publicEntry(e);
       Long live = counts.get(e.getId());
       safe.put("vote_count", live != null ? live : (e.getVoteCount() == null ? 0 : e.getVoteCount()));
       out.add(safe);
@@ -167,6 +165,51 @@ public class ChallengeEngineController {
   }
 
   /** Children and teens stay hidden until a guardian has approved. */
+  /**
+   * An entry as a client may see it.
+   *
+   * <p>Named field by field, not serialised and trimmed. This was
+   * {@code convertValue(entry)} with {@code creator_email} removed — a
+   * denylist over an entity that also carries the guardian's name, email,
+   * mobile and address. The listing below has no authentication, so that
+   * shape put a child's household contact details in a public response the
+   * moment an entry was approved, and every field added to the entity later
+   * would have joined them.
+   *
+   * <p>Whether a reader is an admin changes which entries they see, not which
+   * fields: nothing here is admin-only, and an admin who needs the rest has
+   * the entity API for it.
+   *
+   * <p>is_minor and guardian_approval_status are deliberately absent, though
+   * the client filters on them too. Publishing them would say which entries
+   * are a child's, to anyone who asks. publiclyListable() above already
+   * withholds a child's entry that has no guardian approval, and it runs
+   * before this does — the server's filter is the one that matters, and it
+   * does not need the client to repeat it.
+   */
+  private static Map<String, Object> publicEntry(EntryEntity e) {
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("id", e.getId());
+    out.put("challenge_id", nz(e.getChallengeId()));
+    out.put("challenge_title", nz(e.getChallengeTitle()));
+    out.put("title", nz(e.getTitle()));
+    out.put("description", nz(e.getDescription()));
+    out.put("creator_name", nz(e.getCreatorName()));
+    out.put("category", nz(e.getCategory()));
+    out.put("division", nz(e.getDivision()));
+    out.put("state", nz(e.getState()));
+    out.put("city", nz(e.getCity()));
+    out.put("work_type", nz(e.getWorkType()));
+    out.put("work_text", nz(e.getWorkText()));
+    out.put("work_link", nz(e.getWorkLink()));
+    out.put("status", nz(e.getStatus()));
+    out.put("is_winner", Boolean.TRUE.equals(e.getIsWinner()));
+    out.put("is_finalist", Boolean.TRUE.equals(e.getIsFinalist()));
+    out.put("finalist_week", e.getFinalistWeek());
+    out.put("submitted_at", e.getSubmittedAt() != null ? e.getSubmittedAt() : e.getCreatedDate());
+    return out;
+  }
+
   private static boolean publiclyListable(EntryEntity e) {
     if (isChild(e) && !"approved".equals(nz(e.getGuardianApprovalStatus()))) {
       return false;
@@ -247,9 +290,7 @@ public class ChallengeEngineController {
     apply(entry, status, Instant.now(), "single-" + System.currentTimeMillis());
     entries.save(entry);
 
-    Map<String, Object> safe = mapper.convertValue(entry, new com.fasterxml.jackson.core.type.TypeReference<>() {});
-    safe.remove("creator_email");
-    return ResponseEntity.ok(Map.of("ok", true, "entry", safe));
+    return ResponseEntity.ok(Map.of("ok", true, "entry", publicEntry(entry)));
   }
 
   /**
