@@ -1,6 +1,5 @@
 package com.fiftythree.challenges.admin;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fiftythree.challenges.compliance.ComplianceAuditService;
 import com.fiftythree.challenges.engine.EntryQueryRepository;
 import com.fiftythree.challenges.entity.ChallengeEntity;
@@ -47,7 +46,6 @@ public class ContentModerationController {
   private final HostAccessService hostAccess;
   private final ComplianceAuditService audit;
   private final CallerResolver caller;
-  private final ObjectMapper mapper;
 
   public ContentModerationController(
       EntryQueryRepository entries,
@@ -55,15 +53,13 @@ public class ContentModerationController {
       HostChallengeQueryRepository hostChallenges,
       HostAccessService hostAccess,
       ComplianceAuditService audit,
-      CallerResolver caller,
-      ObjectMapper mapper) {
+      CallerResolver caller) {
     this.entries = entries;
     this.challenges = challenges;
     this.hostChallenges = hostChallenges;
     this.hostAccess = hostAccess;
     this.audit = audit;
     this.caller = caller;
-    this.mapper = mapper;
   }
 
   @PostMapping("/api/apps/{appId}/functions/contentModeration")
@@ -169,10 +165,21 @@ public class ContentModerationController {
         "Entry " + entryId + " " + decision + (note.isEmpty() ? "" : ": " + note)
             + " by " + (isAdmin ? "admin" : "host") + ".");
 
-    Map<String, Object> safe = mapper.convertValue(
-        entry, new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {});
-    safe.remove("creator_email");
-    return ResponseEntity.ok(Map.of("ok", true, "entry", safe));
+    // The decision, not the record. This serialised the whole EntryEntity and
+    // removed creator_email — a denylist against an entity that also carries
+    // guardian_name, guardian_email, guardian_mobile and guardian_address.
+    // A host reviewing a child's entry was handed the guardian's home address
+    // to confirm an approve or a reject, and every field added to the entity
+    // later would have joined it silently.
+    //
+    // queue() above builds its rows field by field for exactly this reason.
+    // Nothing reads the returned entry, so the honest answer is the outcome.
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("ok", true);
+    out.put("entry_id", entry.getId());
+    out.put("status", entry.getStatus());
+    out.put("reviewed_at", entry.getReviewedAt());
+    return ResponseEntity.ok(out);
   }
 
   /**
