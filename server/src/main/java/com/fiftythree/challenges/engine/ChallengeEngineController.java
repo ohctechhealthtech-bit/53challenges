@@ -96,8 +96,14 @@ public class ChallengeEngineController {
 
       switch (action) {
         case "list": {
-          List<JsonNode> list = upstream.challenges(
-              Map.of("limit", "200", "include_inactive", "true"));
+          // Inactive challenges only for an admin. This asked for them
+          // unconditionally on an action that takes no session, and the SPA
+          // then dropped the non-live ones in the browser — so a draft was
+          // sent to anyone who asked and merely not drawn. Filtering after
+          // delivery is not filtering.
+          List<JsonNode> list = upstream.challenges(Map.of(
+              "limit", "200",
+              "include_inactive", isAdmin ? "true" : "false"));
           return ResponseEntity.ok(Map.of("challenges", list));
         }
         case "get": {
@@ -105,6 +111,10 @@ public class ChallengeEngineController {
           if (id.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "id required"));
           }
+          // Unlike the listing above, this keeps include_inactive for everyone:
+          // a finished challenge is inactive and its results page has to render
+          // for the public. The difference is that this needs the id, so it
+          // answers a question rather than handing out a catalogue.
           List<JsonNode> list = upstream.challenges(Map.of("id", id, "include_inactive", "true"));
           JsonNode match = list.stream()
               .filter(c -> id.equals(c.path("id").asText("")))
