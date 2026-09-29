@@ -69,8 +69,13 @@ public class SecurityConfig {
             .referrerPolicy(r -> r.policy(
                 org.springframework.security.web.header.writers
                     .ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+            // Without includeSubDomains, matching the nginx block. This platform
+            // provisions challenge subdomains on demand, and a browser that
+            // has seen includeSubDomains refuses any *.53challenges.com whose
+            // certificate is not valid — for a year, remembered on the
+            // visitor's machine where it cannot be cleared.
             .httpStrictTransportSecurity(s -> s
-                .includeSubDomains(true)
+                .includeSubDomains(false)
                 .maxAgeInSeconds(31536000))
             // An API response is never a document, so it needs nothing beyond
             // refusing to be one.
