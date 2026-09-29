@@ -69,6 +69,13 @@ export default function ApplyScreenBody({
       );
 
     case 'payment':
+      // Told it is authenticated on purpose, though the real flag is in scope.
+      // A guest who has passed the email_verify screen before this one is a
+      // supported way to pay: hostPortal lists start_application_payment,
+      // confirm_payment and submit_application as guest actions and
+      // identifies them by that verified email. Passing the real value here
+      // would show a sign-in prompt instead of the payment form and end the
+      // guest application. The server decides who may pay, as ever.
       return (
         <ApplicationFinalStep
           draftId={draftId}
