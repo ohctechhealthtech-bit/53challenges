@@ -1,5 +1,7 @@
 package com.fiftythree.challenges.auth;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.fiftythree.challenges.llm.LlmClient;
 import com.fiftythree.challenges.mail.MailService;
 import com.fiftythree.challenges.support.RateLimiter;
@@ -27,6 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class AuthController {
+
+  private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
   private final UpstreamAuthClient upstream;
   private final JwtService jwt;
@@ -82,7 +86,13 @@ public class AuthController {
       // Exception, not SQLException: a pool that cannot hand out a connection
       // throws unchecked types too, and one escaping here produces an empty
       // response — the least useful possible answer from a health check.
-      return ResponseEntity.status(503).body(status("degraded", String.valueOf(e.getMessage())));
+      //
+      // The message goes to the log, not the response. This endpoint needs no
+      // session, and a driver message is happy to name the host, the database
+      // and the user it failed to authenticate as. The caller only needs to
+      // know the answer is no; whoever is on the machine can read why.
+      log.error("Health check could not reach the database", e);
+      return ResponseEntity.status(503).body(status("degraded", "database unavailable"));
     }
   }
 

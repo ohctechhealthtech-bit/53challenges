@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 import { clearSessionToken, getSessionToken, getAccessToken, setAccessToken } from '@/lib/customSession';
+import { clearRequestCache } from '@/lib/requestCache';
 
 // Custom (Challenge-API) logins carry no platform role, so admin screens would
 // deny actual admins. Resolve the role from this app's own user record.
@@ -199,6 +200,13 @@ export const AuthProvider = ({ children }) => {
   const clearChallengeApiSession = () => {
     try { localStorage.removeItem('challengeApi_session'); } catch {}
     clearSessionToken();
+    // The in-memory request cache belongs to whoever was signed in. Most of
+    // what it holds is public, but not all of it: the native challenge list
+    // includes inactive challenges for an admin and not for anyone else, so
+    // an admin's cached copy served to the next person would show them
+    // drafts. Sign-out is the only moment that is reliably known, and a
+    // logout without a redirect keeps the page — and the cache — alive.
+    clearRequestCache();
   };
 
   const logout = (shouldRedirect = true) => {
