@@ -182,7 +182,8 @@ public class SubmitChallengeEntryController {
     // created or pushed upstream.
     if (gates.isEntryBlocked(challengeId)) {
       audit.gateLog("", challengeId, "enforcement_block", "submit_entry",
-          "submitChallengeEntry blocked an entry for a launch-blocked challenge.");
+          "submitChallengeEntry blocked an entry for a launch-blocked challenge.",
+          email);
       audit.participationDenied(challengeId, "", email,
           "submitChallengeEntry rejected: entry gate is not open for this challenge.");
       return ResponseEntity.status(403)

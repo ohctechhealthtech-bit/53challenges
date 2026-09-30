@@ -91,7 +91,8 @@ public class CastVoteController {
 
       if (gates.isVoteBlocked(challengeId)) {
         audit.gateLog("", challengeId, "enforcement_block", "cast_vote",
-            "castVote blocked a vote for a challenge whose voting gate is not open.");
+            "castVote blocked a vote for a challenge whose voting gate is not open.",
+            email);
         audit.participationDenied(challengeId, "", email,
             "castVote rejected: voting gate not open for challenge " + challengeId + ".");
         return ResponseEntity.status(403)

@@ -216,7 +216,8 @@ public class ComplianceGateController {
           : "field_change";
       audit.gateLog(gateId, nz(gate.getChallengeId()), logAction, change.getKey(),
           "launch_blocked".equals(change.getKey()) && !truthy(change.getValue())
-              ? "Cleared after all conditions met." : "");
+              ? "Cleared after all conditions met." : "",
+          email);
     }
 
     applyUpdates(gate, updates);

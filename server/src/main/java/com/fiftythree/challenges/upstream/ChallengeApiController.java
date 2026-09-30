@@ -249,8 +249,13 @@ public class ChallengeApiController {
         if (blocked) {
           // Refused here, before anything reaches upstream: this proxy is the
           // containment layer when a client bypasses the UI.
+          // The actor comes from the session this proxy was already handed, so
+          // the gate log says who was refused rather than only that someone was.
+          CustomSessionVerifier.Session actor =
+              sessions.verify(str(request.get("session_token")));
           audit.gateLog("", challengeId, "enforcement_block", action,
-              "challengeApi proxy blocked a '" + action + "' for a launch-blocked challenge.");
+              "challengeApi proxy blocked a '" + action + "' for a launch-blocked challenge.",
+              actor == null ? "" : actor.email());
           return ResponseEntity.status(403).body(Map.of(
               "error", "This challenge is temporarily blocked pending legal/compliance review."));
         }

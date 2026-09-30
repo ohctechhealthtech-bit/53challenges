@@ -106,8 +106,20 @@ public class ComplianceAuditService {
     }
   }
 
-  /** Records a gate-level action against the gate log. */
-  public void gateLog(String gateId, String challengeId, String action, String fieldName, String note) {
+  /**
+   * Records a gate-level action against the gate log.
+   *
+   * <p>{@code actorEmail} is who did it. These two columns were written as
+   * empty strings and the signature had nowhere to put anything else, so the
+   * gate log recorded that a participation was refused without recording who
+   * refused it or who tried. For a trail that exists to answer questions
+   * about children's participation afterwards, that is most of the answer
+   * missing.
+   *
+   * <p>Pass an empty string only where there genuinely is no actor.
+   */
+  public void gateLog(String gateId, String challengeId, String action, String fieldName,
+      String note, String actorEmail) {
     try {
       ComplianceGateLogEntity row = new ComplianceGateLogEntity();
       row.setId(newId());
@@ -118,7 +130,7 @@ public class ComplianceAuditService {
       row.setOldValue("");
       row.setNewValue("");
       row.setChangedById("");
-      row.setChangedByEmail("");
+      row.setChangedByEmail(nz(actorEmail));
       row.setNote(nz(note));
       row.setCreatedDate(Instant.now());
       row.setUpdatedDate(Instant.now());
