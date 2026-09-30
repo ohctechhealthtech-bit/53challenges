@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { adminChallengeData } from '@/lib/adminChallengeApi';
+import { escapeHtml, escapeHtmlWithBreaks } from '@/lib/escapeHtml';
 
 export default function HostRequestChat({ request, messages: initialMessages = [], onChanged }) {
   const [messages, setMessages] = useState(initialMessages);
@@ -22,7 +23,12 @@ export default function HostRequestChat({ request, messages: initialMessages = [
       const emailRes = await base44.integrations.Core.SendEmail({
         to: request.contact_email,
         subject: `Re: Your challenge proposal — ${request.working_title}`,
-        body: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1c1917"><p>Hi ${request.contact_name},</p><p>${message.replace(/\n/g, '<br>')}</p><p style="color:#78716c;font-size:13px">— The 53 Challenges Team<br>Regarding your "Host a Challenge" request: ${request.working_title}</p></div>`,
+        // Every interpolated value is escaped. contact_name and working_title
+        // are the applicant's own words from their proposal, and this email
+        // carries the 53 Challenges name — unescaped, an applicant could put
+        // markup in their submission and get it back rendered in a message
+        // that looks like it came from us.
+        body: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#1c1917"><p>Hi ${escapeHtml(request.contact_name)},</p><p>${escapeHtmlWithBreaks(message)}</p><p style="color:#78716c;font-size:13px">— The 53 Challenges Team<br>Regarding your "Host a Challenge" request: ${escapeHtml(request.working_title)}</p></div>`,
       });
       const emailed = !!emailRes;
       // Best-effort: persist the message on the parent via the admin proxy.

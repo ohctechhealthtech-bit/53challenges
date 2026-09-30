@@ -1,7 +1,39 @@
 import { safeExternalUrl } from '@/lib/safeUrl';
 import { ExternalLink, Link as LinkIcon } from 'lucide-react';
 
-/** Turn a shared link into an embeddable player URL where we can. */
+/**
+ * The hosts whose own pages we are willing to put in an iframe.
+ *
+ * Checked against the parsed hostname, never as a substring of the link. The
+ * Dropbox branch below matched "dropbox.com/" anywhere in the string and then
+ * embedded the ORIGINAL url, so "https://evil.com/dropbox.com/x" passed and an
+ * entrant could load their own page inside the moderation screen — with the
+ * permissions this iframe grants, in front of an admin.
+ */
+const EMBEDDABLE_DROPBOX_HOSTS = new Set([
+  'dropbox.com',
+  'www.dropbox.com',
+  'dl.dropboxusercontent.com',
+]);
+
+/** The https hostname, lowercased, or null when the link will not parse. */
+function hostOf(url) {
+  try {
+    const parsed = new URL(String(url).trim());
+    return parsed.protocol === 'https:' ? parsed.hostname.toLowerCase() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Turn a shared link into an embeddable player URL where we can.
+ *
+ * The YouTube, Vimeo and Drive branches are safe by construction: each takes
+ * an id out of the link and builds a URL against a host named right here.
+ * Dropbox is the one that embeds the caller's own URL, so it is the one that
+ * has to prove where it points.
+ */
 function embedUrl(url) {
   const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/i);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
@@ -9,8 +41,10 @@ function embedUrl(url) {
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
   const drive = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/i);
   if (drive) return `https://drive.google.com/file/d/${drive[1]}/preview`;
-  const dropbox = url.match(/dropbox\.com\/[^\s]+/i);
-  if (dropbox) return url.replace(/[?&]dl=0/, '').concat(url.includes('?') ? '&raw=1' : '?raw=1');
+  if (EMBEDDABLE_DROPBOX_HOSTS.has(hostOf(url))) {
+    const cleaned = url.replace(/[?&]dl=0/, '');
+    return cleaned.concat(cleaned.includes('?') ? '&raw=1' : '?raw=1');
+  }
   return '';
 }
 
