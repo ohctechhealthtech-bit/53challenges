@@ -13,7 +13,8 @@ import { challengeApi } from '@/lib/challengeApi';
 import { getSessionToken } from '@/lib/customSession';
 import { functionErrorMessage, isSessionExpired } from '@/lib/functionErrors';
 import { useAuth } from '@/lib/AuthContext';
-import { categoryMeta, STATES, challengePhase, isComplianceBlocked, isOpenForEntries } from '@/lib/challenges-data';
+import { clearAgeOk } from '@/lib/ageGate';
+import { categoryMeta, STATES, isComplianceBlocked, isOpenForEntries } from '@/lib/challenges-data';
 import { sendLifecycle } from '@/lib/marketing';
 import {
   getDivisions, deriveAge, assignDivision, divisionLabel,
@@ -426,6 +427,17 @@ export default function SubmitEntry() {
         // looking at a green confirmation and a red error, with no way to ask
         // for a new code.
         if (subRes.data?.needs_verification) setEntryToken('');
+        // needs_age_check means the server holds no age attestation for this
+        // account. The browser's age gate is a localStorage flag and can be
+        // skipped, so the server now insists on its own evidence before an
+        // entry. Clearing the flag makes needsAgeGate true again and App
+        // redirects to /age-gate, which records the attestation properly —
+        // better than leaving them reading an error with nowhere to go.
+        if (subRes.data?.needs_age_check) {
+          clearAgeOk(user?.email);
+          navigate('/age-gate');
+          return;
+        }
         setErrors({ form: subRes.data.error });
         return;
       }

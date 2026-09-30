@@ -59,3 +59,18 @@ export function needsAgeGate(user) {
   if (user.date_of_birth || user.data?.date_of_birth) return false;
   return !hasAgeOk(user.email);
 }
+
+/**
+ * Forgets the local "age confirmed" flag for an account.
+ *
+ * The server refuses an entry when it holds no age attestation, and this flag
+ * is what was hiding that: it is set in the browser and never checked
+ * anywhere else, so a user could carry it while the server knew nothing about
+ * their age. Clearing it makes needsAgeGate true again and the app sends them
+ * to /age-gate, which records the attestation server-side.
+ */
+export function clearAgeOk(email) {
+  try {
+    localStorage.removeItem(ageOkStorageKey(email));
+  } catch { /* storage unavailable */ }
+}

@@ -250,14 +250,36 @@ public class SubmitChallengeEntryController {
     // An entrant under 18 is a minor: guardian details are mandatory and the
     // entry is gated behind guardian approval.
     //
+    // An entry needs positive age evidence on the server, not merely the
+    // absence of a claim to the contrary.
+    //
+    // The attested age below is authoritative when it exists. When it does
+    // not, this fell back to is_minor, derived_age and the division — all of
+    // them from the request body. So the browser-side age gate, which is a
+    // localStorage flag, was the only thing standing between a minor and
+    // skipping guardian consent: set the flag, never attest, submit
+    // is_minor:false in an adult division, and attestedAge is 0 and nothing
+    // contradicts it.
+    //
+    // Passing the age gate records an AgeAttestation row (AgeGateController
+    // saves one for a confirmed adult and for a blocked minor alike), so
+    // anyone who has genuinely been through it has one. Requiring it costs a
+    // legitimate entrant nothing and closes the only way round the check.
+    java.util.Optional<com.fiftythree.challenges.entity.AgeAttestationEntity> onRecord =
+        attestations.findLatestByEmail(email).stream().findFirst();
+    if (onRecord.isEmpty()) {
+      return ResponseEntity.badRequest().body(Map.of(
+          "error", "Please confirm your date of birth before submitting an entry.",
+          "needs_age_check", true));
+    }
+
     // The attested age is checked first and independently, because everything
     // else here comes from the request body. is_minor and derived_age are the
     // browser's word for it, so on their own a minor could send
     // is_minor:false and skip guardian consent entirely. The body can still
     // make someone a minor — a stricter answer is always safe — but it can no
     // longer make them an adult.
-    double attestedAge = attestations.findLatestByEmail(email).stream()
-        .findFirst()
+    double attestedAge = onRecord
         .map(a -> a.getAgeYears() == null ? 0d : a.getAgeYears())
         .orElse(0d);
     double derivedAge = toDouble(entry.get("derived_age"));
