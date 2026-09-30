@@ -19,14 +19,28 @@ const KNOWN_IMAGE_HOSTS = [
   'i.ytimg.com',
 ];
 
+/**
+ * Whether a link is something we are willing to load as an image.
+ *
+ * Hosts are matched as a suffix on a dot boundary, not as a substring. This
+ * used hostname.includes(h), so "amazonaws.com.evil.com" matched
+ * "amazonaws.com" — the same shape of mistake the Dropbox embed had. An
+ * <img> cannot run script, so the cost is narrower than it sounds: the
+ * viewer's address and referrer go to whoever answers.
+ *
+ * https only. A data: URL renders attacker-chosen content on our own page's
+ * terms, and there is no reason for an entry thumbnail to be one.
+ */
 export function isValidImageUrl(url) {
   if (!url || typeof url !== 'string') return false;
   const s = url.trim();
   if (!s) return false;
   try {
     const u = new URL(s);
-    if (IMAGE_EXT_RE.test(u.pathname)) return true;
-    return KNOWN_IMAGE_HOSTS.some((h) => u.hostname.includes(h));
+    if (u.protocol !== 'https:') return false;
+    const host = u.hostname.toLowerCase();
+    if (KNOWN_IMAGE_HOSTS.some((h) => host === h || host.endsWith('.' + h))) return true;
+    return IMAGE_EXT_RE.test(u.pathname);
   } catch {
     return false;
   }
