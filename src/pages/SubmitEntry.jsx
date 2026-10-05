@@ -370,6 +370,32 @@ export default function SubmitEntry() {
     };
   };
 
+  /**
+   * Acts on the flags the server sets alongside an error.
+   *
+   * Called from both the resolved path and the catch, because a 400 makes the
+   * SDK throw: the flags only ever reached the resolved branch, so a rejected
+   * token stayed in state and the next submit sent the same dead one. The
+   * entrant sat looking at "Email verified" with no way to ask for another
+   * code, and the server saw the same token for an hour.
+   *
+   * Returns true when it has handled the error and navigated away.
+   */
+  const applyServerFlags = (data) => {
+    if (!data) return false;
+    // The token is no longer accepted, so the green "verified" is a lie.
+    if (data.needs_verification) setEntryToken('');
+    if (data.needs_age_check) {
+      // The browser's age gate is a localStorage flag and can be skipped, so
+      // the server insists on its own evidence. Clearing it makes
+      // needsAgeGate true and App redirects to /age-gate, which records the
+      // attestation properly — better than an error with nowhere to go.
+      clearAgeOk(user?.email);
+      navigate('/age-gate');
+      return true;
+    }
+    return false;
+  };
   const handleSubmit = async () => {
     let pendingLink = null;
     if (linkInput.trim()) { pendingLink = linkInput.trim(); addLink(linkInput); }
@@ -422,22 +448,7 @@ export default function SubmitEntry() {
         session_token: getSessionToken(),
       });
       if (subRes.data?.error) {
-        // needs_verification means the server no longer accepts this token, so
-        // the "Email verified" state is stale. Clear it or the entrant is stuck
-        // looking at a green confirmation and a red error, with no way to ask
-        // for a new code.
-        if (subRes.data?.needs_verification) setEntryToken('');
-        // needs_age_check means the server holds no age attestation for this
-        // account. The browser's age gate is a localStorage flag and can be
-        // skipped, so the server now insists on its own evidence before an
-        // entry. Clearing the flag makes needsAgeGate true again and App
-        // redirects to /age-gate, which records the attestation properly —
-        // better than leaving them reading an error with nowhere to go.
-        if (subRes.data?.needs_age_check) {
-          clearAgeOk(user?.email);
-          navigate('/age-gate');
-          return;
-        }
+        if (applyServerFlags(subRes.data)) return;
         setErrors({ form: subRes.data.error });
         return;
       }
@@ -454,6 +465,11 @@ export default function SubmitEntry() {
         setTimeout(navigateToLogin, 2500);
         return;
       }
+      // A 400 arrives here, not above: the SDK throws on it. The flags the
+      // server set are in the thrown error, and acting on them is the only
+      // thing that frees an entrant whose token the parent has rejected.
+      const thrown = e?.response?.data ?? e?.data;
+      if (applyServerFlags(thrown)) return;
       setErrors({ form: functionErrorMessage(e, 'Failed to submit. Please try again.') });
     } finally {
       setSubmitting(false);
