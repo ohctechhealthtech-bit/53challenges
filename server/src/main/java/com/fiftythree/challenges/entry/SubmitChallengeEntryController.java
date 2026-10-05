@@ -355,6 +355,19 @@ public class SubmitChallengeEntryController {
       // shorter than ours, so a large upload can outlive it. Flagging those as
       // needs_verification sends the entrant back for a fresh code instead of
       // showing "Email verified" above an error saying it is not.
+      //
+      // Logged with the token prefix and the local row it matched. When this
+      // fires, our own check has already passed — the token is in our table,
+      // verified, unconsumed and unexpired — so a rejection here means the
+      // two sides disagree about a token upstream itself issued, and the
+      // response text is the only evidence of why.
+      log.warn("submit_entry rejected upstream for {} on challenge {}: \"{}\""
+          + " (token {}..., local row verified_at={} expires_at={})",
+          email, challengeId, relayed,
+          str(request.get("verification_token")).length() >= 8
+              ? str(request.get("verification_token")).substring(0, 8) : "short",
+          verificationRow == null ? "none" : String.valueOf(verificationRow.getVerifiedAt()),
+          verificationRow == null ? "none" : String.valueOf(verificationRow.getExpiresAt()));
       Map<String, Object> out = new LinkedHashMap<>();
       out.put("error", relayed);
       if (relayed.toLowerCase().contains("verif")) {
