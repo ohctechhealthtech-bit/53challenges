@@ -16,11 +16,17 @@ function embedUrl(url) {
 export function workKind(entry) {
   const url = entry?.work_url || entry?.work_link || '';
   if (!url) return { kind: 'text', url: '' };
+  // An embed host wins over media_type, and is checked first. Upstream
+  // re-hosts uploaded videos on Vimeo and rewrites work_url to the player
+  // page while leaving media_type as "video" — so this used to hand
+  // https://player.vimeo.com/video/… to a bare <video> tag, which answers
+  // MEDIA_ERR_SRC_NOT_SUPPORTED and sits at 0:00 forever. A player page is
+  // an iframe, whatever the row says it is.
+  const embed = embedUrl(url);
+  if (embed) return { kind: 'embed', url: embed };
   if (/\.(png|jpe?g|webp|gif|avif|svg)(\?|$)/i.test(url) || entry?.media_type === 'image') return { kind: 'image', url };
   if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(url) || entry?.media_type === 'video') return { kind: 'video', url };
   if (/\.(mp3|wav|ogg|m4a)(\?|$)/i.test(url) || entry?.media_type === 'audio') return { kind: 'audio', url };
-  const embed = embedUrl(url);
-  if (embed) return { kind: 'embed', url: embed };
   return { kind: 'text', url };
 }
 

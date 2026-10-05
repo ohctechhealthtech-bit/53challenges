@@ -1,3 +1,4 @@
+import { workKind } from '@/components/challenges/discover/EntryWorkMedia';
 import { safeExternalUrl } from '@/lib/safeUrl';
 import { useEffect, useState } from 'react';
 import { Loader2, ExternalLink } from 'lucide-react';
@@ -32,7 +33,11 @@ export default function ApprovalPreviewDialog({ open, onOpenChange, entryId, row
   const challenge = data?.challenge || {};
   const media = entry.work_url || '';
   const isImage = ['image', 'photo'].includes(entry.media_type);
-  const isVideo = entry.media_type === 'video';
+  // Embed first: a Vimeo player URL carries media_type "video" and would
+  // otherwise land in a <video> tag that cannot play a page.
+  const embed = workKind(entry);
+  const isEmbed = embed.kind === 'embed';
+  const isVideo = !isEmbed && entry.media_type === 'video';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -60,7 +65,9 @@ export default function ApprovalPreviewDialog({ open, onOpenChange, entryId, row
 
             {media && (
               <div className="overflow-hidden rounded-xl border border-border bg-muted">
-                {isVideo ? (
+                {isEmbed ? (
+                  <iframe src={embed.url} title={entry.title || 'Entry video'} allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowFullScreen className="aspect-video w-full rounded-lg bg-black" />
+                ) : isVideo ? (
                   <video src={media} controls className="max-h-[380px] w-full" />
                 ) : isImage ? (
                   <img src={media} alt="" className="max-h-[380px] w-full object-contain" />
