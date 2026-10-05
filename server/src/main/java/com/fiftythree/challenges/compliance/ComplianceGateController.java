@@ -69,14 +69,33 @@ public class ComplianceGateController {
     String sessionToken = str(request.get("session_token"));
     String email = caller.email(sessionToken);
 
+    // "statuses" answers before the session check, deliberately.
+    //
+    // It is what a challenge page asks to decide whether to show Enter and
+    // Vote, and those pages are public — the whole point of a challenge
+    // subdomain is that anyone can open it. This check sat above the try
+    // block, so a logged-out visitor got 401, the client failed closed as it
+    // is designed to, and every challenge rendered as "Entries & voting are
+    // paused for this challenge pending review" no matter how open it was.
+    //
+    // What it returns is three fields the page then displays anyway:
+    // whether entries are blocked, where legal review got to, and whether the
+    // challenge predates the gate. The caller supplies the ids, so there is
+    // nothing here to enumerate that the page does not already say out loud.
+    if ("statuses".equals(action)) {
+      try {
+        return statuses(request);
+      } catch (Exception e) {
+        log.error("complianceGate statuses failed", e);
+        return ApiErrors.internal(e);
+      }
+    }
+
     if (email == null) {
       return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
     }
 
     try {
-      if ("statuses".equals(action)) {
-        return statuses(request);
-      }
       if (!caller.isAdmin(sessionToken)) {
         return ResponseEntity.status(403).body(Map.of("error", "Admin only"));
       }
