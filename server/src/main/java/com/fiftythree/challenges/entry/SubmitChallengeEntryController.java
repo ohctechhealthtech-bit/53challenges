@@ -123,6 +123,30 @@ public class SubmitChallengeEntryController {
 
   // ---------------------------------------------------------------------- check
 
+  /**
+   * Whether an upstream refusal means the entrant needs a fresh code.
+   *
+   * <p>The OTP service answers a bad token with one of a few phrasings, and
+   * only one of them contains the word this used to match on. "That
+   * verification has expired" and "already used" both left the flag unset, so
+   * the browser kept the dead token, the entrant kept seeing a green "Email
+   * verified" above a red error, and the same spent token went back up on
+   * every retry.
+   *
+   * <p>Matched narrowly on purpose. A refusal for a closed challenge or a
+   * duplicate entry must NOT clear the token: sending someone back for a new
+   * code they did not need is its own dead end.
+   */
+  private static boolean needsFreshCode(String upstreamError) {
+    String text = upstreamError == null ? "" : upstreamError.toLowerCase(java.util.Locale.ROOT);
+    return text.contains("verif")
+        // "already been used", not "already used" — my first attempt at this
+        // matched the phrase I assumed rather than the one they send.
+        || text.contains("used")
+        || text.contains("expired")
+        || text.contains("token");
+  }
+
   private ResponseEntity<?> check(Map<String, Object> request, String email) {
     String challengeId = str(request.get("challenge_id"));
     if (challengeId.isEmpty()) {
@@ -370,7 +394,7 @@ public class SubmitChallengeEntryController {
           verificationRow == null ? "none" : String.valueOf(verificationRow.getExpiresAt()));
       Map<String, Object> out = new LinkedHashMap<>();
       out.put("error", relayed);
-      if (relayed.toLowerCase().contains("verif")) {
+      if (needsFreshCode(relayed)) {
         out.put("needs_verification", true);
       }
       return ResponseEntity.badRequest().body(out);

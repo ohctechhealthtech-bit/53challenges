@@ -36,7 +36,15 @@ public class EmailVerificationService {
       Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$");
   private static final int CODE_LENGTH = 6;
   /** A confirmed verification is good for an hour, as it was on Base44. */
-  private static final Duration TOKEN_TTL = Duration.ofHours(1);
+  /**
+   * Shorter than the OTP service's own 45 minutes, on purpose.
+   *
+   * <p>Ours used to be an hour. For the quarter of an hour between the two,
+   * a token looked good here and was already dead there, so the entrant got
+   * the upstream refusal instead of our own clear "request a new code". The
+   * side that speaks to the person should give up first.
+   */
+  private static final Duration TOKEN_TTL = Duration.ofMinutes(40);
 
   /** This app's purposes mapped onto the OTP service's own names. */
   private static final Map<String, String> UPSTREAM_PURPOSE = Map.of(
