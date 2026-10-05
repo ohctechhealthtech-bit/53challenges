@@ -16,6 +16,7 @@ import com.fiftythree.challenges.security.CallerResolver;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.verification.EmailVerificationService;
 import com.fiftythree.challenges.support.ApiErrors;
+import java.util.ArrayList;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -415,7 +416,26 @@ public class SubmitChallengeEntryController {
       return ResponseEntity.badRequest().body(out);
     }
 
+    // Success means upstream handed back an entry with an id. It used to mean
+    // only "no error field and success not literally false", which a body of
+    // {} or {ok:true} satisfies — so the browser showed "posted", the success
+    // screen showed the entrant's own typed title, and nothing had been
+    // created anywhere. The entry then appeared in no listing, under no
+    // status, not even scoped to its owner, and the only evidence of what
+    // upstream had actually said was gone with the response.
     JsonNode upstreamEntry = result.path("entry").isObject() ? result.path("entry") : result;
+    String upstreamId = upstreamEntry.path("id").asText("");
+    if (upstreamId.isEmpty()) {
+      List<String> keys = new ArrayList<>();
+      result.fieldNames().forEachRemaining(keys::add);
+      log.warn("submit_entry for {} on challenge {} returned no entry id; upstream body keys={} body={}",
+          email, challengeId, keys, result.toString().length() > 600
+              ? result.toString().substring(0, 600) + "…" : result.toString());
+      return ResponseEntity.status(502).body(Map.of(
+          "error", "The main 53 Challenges site accepted the request but did not confirm the entry."
+              + " Nothing has been submitted — please try again, or contact us if this repeats."));
+    }
+    log.info("submit_entry ok for {} on challenge {}: upstream entry id={}", email, challengeId, upstreamId);
     if (isMinor) {
       // Recorded locally too, so the Guardian Dashboard covers upstream
       // entries as well as native ones.
