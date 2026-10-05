@@ -365,9 +365,24 @@ public class SubmitChallengeEntryController {
       payload.put("consent_status", "pending_consent");
     }
 
+    // The token goes in twice, at the top level and inside the entry.
+    //
+    // The parent reads `body.verification_token || entry.verification_token`,
+    // so both are its own supported inputs. But publicChallengeApi forwarded
+    // only {action, entry} to the function that does the reading, dropping
+    // the top-level one — which is why every submission came back "Email
+    // verification required": that is its empty-token branch, not a bad
+    // token. The entry object survives the forward, so a copy inside it
+    // reaches the check whether or not the parent has shipped their fix.
+    //
+    // Remove the entry-level copy once their fix is confirmed live. It is a
+    // single-use credential and it has no business sitting in a record.
+    Map<String, Object> forwarded = new LinkedHashMap<>(payload);
+    forwarded.put("verification_token", str(request.get("verification_token")));
+
     JsonNode result = upstream.postTo(upstream.sibling("publicChallengeApi"), Map.of(
         "action", "submit_entry",
-        "entry", payload,
+        "entry", forwarded,
         "verification_token", str(request.get("verification_token")))).body();
 
     String relayed = firstNonBlank(
