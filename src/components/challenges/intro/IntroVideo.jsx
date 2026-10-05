@@ -1,7 +1,9 @@
 function embedUrl(url) {
   const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/);
   if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
-  const vim = url.match(/vimeo\.com\/(\d+)/);
+  // (?:video/)? — a player page URL reads vimeo.com/video/<id>, not
+  // vimeo.com/<id>; without it that form missed and fell to a <video> tag.
+  const vim = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
   if (vim) return `https://player.vimeo.com/video/${vim[1]}`;
   return null;
 }
