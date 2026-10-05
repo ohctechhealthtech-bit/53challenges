@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fiftythree.challenges.entity.EmailVerificationEntity;
 import com.fiftythree.challenges.upstream.ChallengeApiClient;
 import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
+import java.util.ArrayList;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -91,6 +92,16 @@ public class EmailVerificationService {
     if (error != null) {
       return Map.of("error", error);
     }
+
+    // What the OTP service says back, minus the token itself. When the same
+    // token is then refused by submit_entry seconds later, the two sides
+    // disagree about something, and the issuing response is the only place
+    // the issuer states its own terms — purpose, expiry, whatever it names.
+    List<String> fields = new ArrayList<>();
+    r.fieldNames().forEachRemaining(n -> fields.add(
+        "verification_token".equals(n) ? n + "=<redacted>" : n + "=" + r.path(n).asText("")));
+    log.info("otp verify ok for {} purpose={} (upstream said: {})",
+        to, upstreamPurpose(purpose), String.join(", ", fields));
 
     String token = r.path("verification_token").asText("");
     if (token.isEmpty()) {
