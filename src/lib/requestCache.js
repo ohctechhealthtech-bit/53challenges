@@ -85,11 +85,6 @@ export async function cachedCall(key, ttlMs, fn) {
   return promise;
 }
 
-/** Whether a (possibly stale) value is already held for `key`. */
-export function hasCached(key) {
-  return cache.has(key);
-}
-
 /** Drop cached entries whose key contains `substring` (or all when omitted). */
 export function clearRequestCache(substring) {
   if (!substring) {

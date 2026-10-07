@@ -242,6 +242,9 @@ export const challengeApi = {
   async castVote(payload) {
     const res = await call({ action: 'cast_vote', ...payload });
     clearRequestCache('votes:');
+    // The assembled challenge list carries total_votes too, so it has to go
+    // with them or the home banner shows the old count for up to a minute.
+    clearRequestCache('challenges:list');
     return res;
   },
   // Local vote (this app's Vote entity) — server-enforced one vote per user per entry.
@@ -254,6 +257,7 @@ export const challengeApi = {
         session_token: getSessionToken(),
       });
       clearRequestCache('votes:'); // fresh counts on the next read
+      clearRequestCache('challenges:list');
       return res.data;
     } catch (err) {
       // Surface the backend's message instead of "Request failed with status code N".
