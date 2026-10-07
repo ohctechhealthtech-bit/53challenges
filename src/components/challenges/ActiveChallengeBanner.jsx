@@ -134,7 +134,26 @@ export default function ActiveChallengeBanner() {
   const deadline = challenge ? (phase === 'vote' ? challenge.voting_ends_at : phase === 'upcoming' ? challenge.starts_at : challenge.submission_ends_at) : null;
   const time = useCountdown(deadline);
 
-  if (loading || catsLoading) return <div className="container-tight py-16 text-center text-sm text-muted-foreground">Loading active challenges…</div>;
+  // A first visit with nothing cached still has a moment before data lands.
+  // This used to be a line of grey text in an otherwise empty band, and then
+  // the whole hero popped in two seconds later. This holds the hero's shape
+  // and height (same container, same vertical padding) so the page does not
+  // reflow when the real one arrives. Repeat visits skip this entirely: the
+  // request cache hands back the last result before the first paint.
+  if (loading || catsLoading) {
+    return (
+      <section className="relative overflow-hidden bg-muted" aria-busy="true" aria-label="Loading challenges">
+        <div className="container-tight relative py-12 sm:py-[76px]">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 w-40 rounded-full bg-foreground/10" />
+            <div className="h-10 w-2/3 max-w-xl rounded-lg bg-foreground/10" />
+            <div className="h-4 w-1/2 max-w-md rounded bg-foreground/10" />
+            <div className="h-10 w-36 rounded-full bg-foreground/10" />
+          </div>
+        </div>
+      </section>
+    );
+  }
   if (!challenge) return null;
 
   const cat = categoryMeta(challenge.category);

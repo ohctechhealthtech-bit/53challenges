@@ -1,13 +1,13 @@
+import { SkeletonGrid } from '@/components/motion/Skeleton';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Loader2, ChevronRight, Trophy, Users, Calendar } from 'lucide-react';
+import { ChevronRight, Trophy, Users, Calendar } from 'lucide-react';
 import { challengeApi } from '@/lib/challengeApi';
 import { useCategories } from '@/hooks/useCategories';
 import {
   normalizeCategory,
   isPublicChallenge,
   challengePhase,
-  challengeStatus,
   challengeTitle,
   categoryMeta,
   daysLeft,
@@ -85,11 +85,11 @@ export default function FeaturedChallengesGrid() {
   }, [all, categories]);
 
   if (loading || catsLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-      </div>
-    );
+    // Card-shaped placeholders in the grid's own columns, not a lone spinner:
+    // the section keeps its height and the cards land where the shapes are.
+    // On a repeat visit the cache answers before first paint and this never
+    // shows.
+    return <SkeletonGrid count={6} />;
   }
 
   if (cards.length === 0) {

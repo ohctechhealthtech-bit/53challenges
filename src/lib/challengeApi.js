@@ -106,6 +106,15 @@ async function call(payload) {
 
 export const challengeApi = {
   async listChallenges(params = {}) {
+    // The whole assembled list is cached, keyed by the params asked for, so a
+    // reload hands back the last result instantly (see requestCache) and two
+    // components asking the same question share one round of fetches. The
+    // inner pieces were already cached; the legacy call and the compliance
+    // lookup were not, and they are most of the two seconds.
+    const cacheKey = `challenges:list:${JSON.stringify(params)}`;
+    return cachedCall(cacheKey, READ_TTL_MS, () => this.assembleChallenges(params));
+  },
+  async assembleChallenges(params = {}) {
     const [native, data] = await Promise.all([
       listNativeChallenges(),
       call({ action: 'challenges', ...params }),
