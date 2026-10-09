@@ -2,6 +2,8 @@ package com.fiftythree.challenges.host;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fiftythree.challenges.upstream.ChallengeApiClient;
+import com.fiftythree.challenges.upstream.ChallengeApiClient.UpstreamResponse;
 import com.fiftythree.challenges.admin.DraftRepo;
 import com.fiftythree.challenges.engine.EntryQueryRepository;
 import com.fiftythree.challenges.entity.ChallengeDraftEntity;
@@ -112,6 +114,7 @@ public class HostPortalController {
   private final JsonColumn json;
   private final ObjectMapper mapper;
   private final HostPackagesService hostPackages;
+  private final ChallengeApiClient upstream;
 
   public HostPortalController(
       HostPricing pricing,
@@ -129,7 +132,8 @@ public class HostPortalController {
       UserRepository users,
       JsonColumn json,
       ObjectMapper mapper,
-      HostPackagesService hostPackages) {
+      HostPackagesService hostPackages,
+      ChallengeApiClient upstream) {
     this.pricing = pricing;
     this.organisations = organisations;
     this.push = push;
@@ -146,6 +150,7 @@ public class HostPortalController {
     this.json = json;
     this.mapper = mapper;
     this.hostPackages = hostPackages;
+    this.upstream = upstream;
   }
 
   /** Who is calling, and whether they arrived with a real session. */
@@ -168,6 +173,29 @@ public class HostPortalController {
 
     // Without a known email there is nowhere to attach a draft, so the wizard
     // keeps working from the browser instead of failing.
+    // The public judge panel, proxied from the parent. Answered before any
+    // session gate: a host filling in the wizard may be a guest, and the
+    // parent serves this without a session too.
+    //
+    // The browser used to fetch this straight from the parent app at a
+    // hard-coded 53-classes-….base44.app URL. That worked until the
+    // Content-Security-Policy arrived with connect-src limited to 'self' and
+    // a few named hosts — not that one — and the wizard has read "We could
+    // not load our judge list" ever since. Routing it here is the fix that
+    // fits: every other parent read already goes through this backend, the
+    // API key stays server-side, and the parent's address leaves the client.
+    // The body is passed through unchanged; the client dedupes and reads
+    // `judges` and `judge` exactly as it did from the parent.
+    if ("judge_panel".equals(action) || "judge_details".equals(action)) {
+      Map<String, Object> forwarded = new LinkedHashMap<>();
+      forwarded.put("action", action);
+      if (request.get("judge_id") != null) {
+        forwarded.put("judge_id", request.get("judge_id"));
+      }
+      UpstreamResponse res = upstream.postTo(upstream.sibling("hostPortal"), forwarded);
+      return ResponseEntity.status(res.status()).body(res.body());
+    }
+
     if (identity.anonymousGuest()) {
       if ("get_application_draft".equals(action)) {
         Map<String, Object> out = new LinkedHashMap<>();

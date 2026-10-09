@@ -1,16 +1,23 @@
 /**
  * Public judge panel data from the main 53 site — no session token needed.
+ *
+ * Fetched through this app's own hostPortal function, which proxies the
+ * parent. It used to fetch the parent directly from the browser, at a
+ * hard-coded 53-classes-….base44.app address. That stopped working the day
+ * the Content-Security-Policy arrived: connect-src names 'self' and a few
+ * hosts, not that one, so the browser refused the call and the wizard read
+ * "We could not load our judge list" ever since. Going through our backend
+ * keeps the API key server-side, drops the parent's address from client
+ * code, and is how every other parent read already travels.
  */
-const HOST_PORTAL_URL = 'https://53-classes-fc73a4d1.base44.app/functions/hostPortal';
+import { base44 } from '@/api/base44Client';
 
 async function post(body) {
-  const res = await fetch(HOST_PORTAL_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.error) throw new Error(data.error || 'Request failed');
+  const res = await base44.functions.invoke('hostPortal', body);
+  const data = res?.data || {};
+  // The SDK throws on a non-2xx; a 200 carrying `error` is the other way the
+  // parent says no, and the caller's catch handles both the same.
+  if (data.error) throw new Error(data.error);
   return data;
 }
 
