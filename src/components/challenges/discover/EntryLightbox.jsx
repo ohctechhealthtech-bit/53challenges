@@ -4,7 +4,7 @@ import SwipeStage from './SwipeStage';
 import { Image } from '@/components/ui/image';
 import { challengeApi } from '@/lib/challengeApi';
 import { useAuth } from '@/lib/AuthContext';
-import { divisionBySlug, categoryMeta } from '@/lib/challenges-data';
+import { divisionBySlug } from '@/lib/challenges-data';
 import WrittenEntryCard from './WrittenEntryCard';
 import EntryWorkMedia, { workKind } from './EntryWorkMedia';
 

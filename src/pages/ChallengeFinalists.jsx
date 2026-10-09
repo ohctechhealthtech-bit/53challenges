@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Vote as VoteIcon, Users, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle } from 'lucide-react';
 import { challengeApi } from '@/lib/challengeApi';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import DiscoverToolbar from '@/components/challenges/discover/DiscoverToolbar';
 import VoteCard from '@/components/challenges/discover/VoteCard';
+import VoteCardSkeleton from '@/components/challenges/discover/VoteCardSkeleton';
 import EntryLightbox from '@/components/challenges/discover/EntryLightbox';
-import { categoryMeta, challengePhase, daysLeft } from '@/lib/challenges-data';
+import { challengePhase } from '@/lib/challenges-data';
 import { getPanelForCompetition, getCombinedResults } from '@/lib/votes';
 import { getAuditReview, getJudges } from '@/lib/audit';
 import { getPathwayForChallenge, getSeriesStandings, getPromotionsTo, getPromotedEntries } from '@/lib/pathways';
-import PathwayBadge from '@/components/pathways/PathwayBadge';
 import PathwayStandings from '@/components/pathways/PathwayStandings';
 import ShareToEarn from '@/components/challenges/ShareToEarn';
 import { Trophy as TrophyIcon, BadgeCheck, Users as UsersIcon, ScrollText } from 'lucide-react';
@@ -186,53 +186,74 @@ export default function ChallengeFinalists() {
 
   const reset = () => { setSearch(''); setDivision(''); setState(''); setSort('-community_votes'); };
 
-  if (loading) return <div className="container-tight py-24 text-center text-muted-foreground">Loading finalists…</div>;
-  if (error) return <div className="container-tight py-24 text-center text-destructive">{error}</div>;
+  const canvas = 'min-h-screen bg-[#FDF8F1] text-stone-900';
+  const title = challenge ? (challenge.theme || challenge.title) : '';
+
+  // The main site's Discover & Vote layout: a cream canvas, a centred header,
+  // a sticky toolbar and one column of cards. Loading shows the page's own
+  // shape with card skeletons rather than a line of text.
+  if (loading) return (
+    <div className={canvas}>
+      <div className="px-4 pb-6 pt-10 text-center sm:px-8">
+        <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">Discover <span className="text-orange-500">&amp;</span> Vote</h1>
+        <p className="mt-2 text-base text-stone-600 sm:text-lg">Browse creators and support your favorites</p>
+      </div>
+      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 pb-16 sm:px-8">
+        <VoteCardSkeleton />
+        <VoteCardSkeleton />
+        <VoteCardSkeleton />
+      </div>
+    </div>
+  );
+  if (error) return (
+    <div className={canvas}><div className="px-4 py-24 text-center text-red-600">{error}</div></div>
+  );
   if (!challenge) return (
-    <div className="container-tight py-24 text-center">
-      <p className="text-muted-foreground">Challenge not found.</p>
-      <Link to="/challenges" className="mt-4 inline-block text-primary hover:underline">← Back to challenges</Link>
+    <div className={canvas}>
+      <div className="px-4 py-24 text-center">
+        <p className="text-stone-600">Challenge not found.</p>
+        <Link to="/challenges" className="mt-4 inline-block text-teal-700 hover:underline">&larr; Back to challenges</Link>
+      </div>
     </div>
   );
 
-  const cat = categoryMeta(challenge.category);
   const phase = challengePhase(challenge);
-  const deadline = phase === 'vote' ? challenge.voting_ends_at : challenge.submission_ends_at;
   const finished = phase === 'closed';
   const complianceBlocked = !!challenge.compliance_blocked;
+  const byTitle = (a, b) => String(a.title || '').localeCompare(String(b.title || ''));
+  const list = sort === 'alphabetical' ? [...filtered].sort(byTitle) : sorted;
+  const hasFilters = !!search.trim() || !!division || !!state;
 
   return (
-    <div>
-      {/* Simple header */}
-      <div className="border-b border-border">
-        <div className="container-tight py-8">
-          <Link to="/challenges" className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" /> All challenges
-          </Link>
-          <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">{challenge.theme || challenge.title}</h1>
-          {complianceBlocked && (
-            <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-amber-500/15 px-5 py-3 text-sm font-semibold text-amber-300 ring-1 ring-amber-400/40">
-              <AlertTriangle className="h-4 w-4" /> Entries &amp; voting paused pending compliance review
-            </div>
-          )}
-        </div>
+    <div className={canvas}>
+      <div className="px-4 pb-6 pt-10 text-center sm:px-8">
+        <Link to="/challenges" className="mb-4 inline-flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-900">
+          <ArrowLeft className="h-4 w-4" /> All challenges
+        </Link>
+        <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 sm:text-4xl">Discover <span className="text-orange-500">&amp;</span> Vote</h1>
+        <p className="mt-2 text-base text-stone-600 sm:text-lg">Browse creators and support your favorites</p>
+        <h2 className="mt-5 font-heading text-xl font-bold text-stone-800 sm:text-2xl">{title}</h2>
+        {complianceBlocked && (
+          <div className="mt-5 inline-flex items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-5 py-3 text-sm font-semibold text-amber-800">
+            <AlertTriangle className="h-4 w-4" /> Entries &amp; voting paused pending compliance review
+          </div>
+        )}
       </div>
 
-      <ShareToEarn challengeId={challenge.id} title={challenge.theme || challenge.title} />
+      <ShareToEarn challengeId={challenge.id} title={title} />
 
-      {/* Public weighting + combined results */}
       {panel && panel.weighting_visible && (
-        <div className="container-tight pt-6">
-          <div className="rounded-2xl border border-border bg-card p-4">
+        <div className="mx-auto w-full max-w-3xl px-4 pt-6 sm:px-8">
+          <div className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="font-heading text-sm font-bold">Combined scoring weighting</h3>
-                <p className="text-xs text-muted-foreground">Final result combines the judging panel with the public vote.</p>
+                <h3 className="font-heading text-sm font-bold text-stone-900">Combined scoring weighting</h3>
+                <p className="text-xs text-stone-500">Final result combines the judging panel with the public vote.</p>
               </div>
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="rounded-lg bg-primary/15 px-3 py-1 text-primary">{Math.round((panel.judge_weight ?? 0.7) * 100)}% Judging</span>
-                <span className="text-muted-foreground">+</span>
-                <span className="rounded-lg bg-pink-500/15 px-3 py-1 text-pink-300">{Math.round((panel.public_weight ?? 0.3) * 100)}% Public Vote</span>
+                <span className="rounded-lg bg-teal-50 px-3 py-1 text-teal-800">{Math.round((panel.judge_weight ?? 0.7) * 100)}% Judging</span>
+                <span className="text-stone-400">+</span>
+                <span className="rounded-lg bg-orange-50 px-3 py-1 text-orange-800">{Math.round((panel.public_weight ?? 0.3) * 100)}% Public Vote</span>
               </div>
             </div>
           </div>
@@ -240,9 +261,9 @@ export default function ChallengeFinalists() {
       )}
 
       {pathwayInfo?.pathway && (pathwayInfo.pathway.type === 'national_state_ranking' || pathwayInfo.pathway.type === 'series_championship') && (
-        <div className="container-tight py-6">
-          <h2 className="mb-3 flex items-center gap-2 font-heading text-xl font-bold">
-            {pathwayInfo.pathway.type === 'series_championship' ? <TrophyIcon className="h-5 w-5 text-amber-400" /> : <UsersIcon className="h-5 w-5 text-primary" />}
+        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8">
+          <h2 className="mb-3 flex items-center gap-2 font-heading text-xl font-bold text-stone-900">
+            {pathwayInfo.pathway.type === 'series_championship' ? <TrophyIcon className="h-5 w-5 text-amber-500" /> : <UsersIcon className="h-5 w-5 text-teal-600" />}
             {pathwayInfo.pathway.type === 'series_championship' ? 'Series standings' : 'National & state rankings'}
           </h2>
           <PathwayStandings pathway={pathwayInfo.pathway} entries={entries} standings={seriesStandings} />
@@ -250,63 +271,62 @@ export default function ChallengeFinalists() {
       )}
 
       {panel?.results_locked && (
-        <div className="container-tight py-6">
-          {/* Pending audit gate: winners can't be announced / prizes released until signed off */}
+        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-8">
           {auditReview?.status !== 'signed_off' ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-500/40 bg-amber-500/5 p-5">
-              <ScrollText className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-5">
+              <ScrollText className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
               <div>
-                <h2 className="font-heading text-lg font-bold text-amber-300">Results pending independent audit</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Final placings are verified but not yet announced. Winners and prize payouts are held until the audit sign-off is complete.</p>
+                <h2 className="font-heading text-lg font-bold text-amber-800">Results pending independent audit</h2>
+                <p className="mt-1 text-sm text-stone-600">Final placings are verified but not yet announced. Winners and prize payouts are held until the audit sign-off is complete.</p>
               </div>
             </div>
           ) : (
             <>
-              {/* Independently audited badge + judge credits + method */}
-              <div className="mb-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-5">
+              <div className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
                 <div className="flex flex-wrap items-center gap-3">
-                  <BadgeCheck className="h-5 w-5 text-emerald-400" />
-                  <span className="font-heading text-lg font-bold text-emerald-300">Independently audited</span>
-                  <span className="text-xs text-muted-foreground">Signed off{auditReview?.sign_off_at ? ` ${new Date(auditReview.sign_off_at).toLocaleDateString()}` : ''} by {auditReview?.sign_off_name}</span>
+                  <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                  <span className="font-heading text-lg font-bold text-emerald-800">Independently audited</span>
+                  <span className="text-xs text-stone-500">Signed off{auditReview?.sign_off_at ? ' ' + new Date(auditReview.sign_off_at).toLocaleDateString() : ''} by {auditReview?.sign_off_name}</span>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                  <span><b className="text-foreground">Judging method:</b> Blind judging — {Math.round((panel?.judge_weight ?? 0.7) * 100)}% judging / {Math.round((panel?.public_weight ?? 0.3) * 100)}% public vote</span>
-                  {panel?.criteria?.length > 0 && <span><b className="text-foreground">Criteria:</b> {panel.criteria.map((c) => c.name).join(' · ')}</span>}
+                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-stone-600">
+                  <span><b className="text-stone-900">Judging method:</b> Blind judging &mdash; {Math.round((panel?.judge_weight ?? 0.7) * 100)}% judging / {Math.round((panel?.public_weight ?? 0.3) * 100)}% public vote</span>
+                  {panel?.criteria?.length > 0 && <span><b className="text-stone-900">Criteria:</b> {panel.criteria.map((c) => c.name).join(' / ')}</span>}
                 </div>
                 {judges.length > 0 && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-stone-600">
                     <UsersIcon className="h-3.5 w-3.5" />
-                    <b className="text-foreground">Judge credits:</b>
+                    <b className="text-stone-900">Judge credits:</b>
                     {judges.map((j) => (
-                      <span key={j.id} className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-semibold">{j.name}</span>
+                      <span key={j.id} className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-stone-700 ring-1 ring-stone-200">{j.name}</span>
                     ))}
                   </div>
                 )}
                 {auditReview?.routed_to && (
-                  <p className="mt-2 text-xs text-orange-400">Routing for resolution: {auditReview.routed_to} · re-audit #{auditReview.re_audit_count}</p>
+                  <p className="mt-2 text-xs text-orange-700">Routing for resolution: {auditReview.routed_to} / re-audit #{auditReview.re_audit_count}</p>
                 )}
               </div>
 
               {combined.rows.length > 0 && (
                 <>
-                  <h2 className="mb-3 flex items-center gap-2 font-heading text-xl font-bold"><TrophyIcon className="h-5 w-5 text-amber-400" /> Final results</h2>
-                  <div className="overflow-hidden rounded-2xl border border-border bg-card">
-                    <ol className="divide-y divide-border">
+                  <h2 className="mb-3 flex items-center gap-2 font-heading text-xl font-bold text-stone-900"><TrophyIcon className="h-5 w-5 text-amber-500" /> Final results</h2>
+                  <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+                    <ol className="divide-y divide-stone-100">
                       {combined.rows.map((r) => {
                         const e = entries.find((en) => en.id === r.entry_id);
+                        const top = r.combined_rank <= 3;
                         return (
                           <li key={r.entry_id} className="flex items-center justify-between gap-3 px-4 py-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-extrabold ${r.combined_rank <= 3 ? 'grad-bg text-white' : 'bg-muted text-muted-foreground'}`}>{r.combined_rank}</span>
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span className={'grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-extrabold ' + (top ? 'bg-orange-500 text-white' : 'bg-stone-100 text-stone-600')}>{r.combined_rank}</span>
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold">{e?.title || r.entry_title || `Entry ${r.entry_id}`}</p>
-                                <p className="text-xs text-muted-foreground">{e?.creator_name || r.creator_name || ''}</p>
+                                <p className="truncate text-sm font-semibold text-stone-900">{e?.title || r.entry_title || ('Entry ' + r.entry_id)}</p>
+                                <p className="text-xs text-stone-500">{e?.creator_name || r.creator_name || ''}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                              <span>Judge <b className="text-foreground">{r.judge_score.toFixed(1)}</b></span>
-                              <span>Public <b className="text-foreground">{r.public_score.toFixed(1)}</b> <span className="opacity-60">({r.public_votes}v)</span></span>
-                              <span className="font-heading text-lg font-extrabold text-primary">{r.combined_score.toFixed(2)}</span>
+                            <div className="flex items-center gap-4 text-xs text-stone-500">
+                              <span>Judge <b className="text-stone-900">{r.judge_score.toFixed(1)}</b></span>
+                              <span>Public <b className="text-stone-900">{r.public_score.toFixed(1)}</b> <span className="opacity-60">({r.public_votes}v)</span></span>
+                              <span className="font-heading text-lg font-extrabold text-teal-700">{r.combined_score.toFixed(2)}</span>
                             </div>
                           </li>
                         );
@@ -320,7 +340,6 @@ export default function ChallengeFinalists() {
         </div>
       )}
 
-      {/* Search / filter / sort toolbar */}
       <DiscoverToolbar
         search={search} setSearch={setSearch}
         division={division} setDivision={setDivision}
@@ -328,47 +347,56 @@ export default function ChallengeFinalists() {
         sort={sort} setSort={setSort}
         states={presentStates}
         onReset={reset}
+        resultCount={list.length}
+        loading={loading}
       />
 
-      {/* Finalists scroller */}
-      <div className="container-tight py-10">
-        <div className="mb-5">
-          <h2 className="font-heading text-xl font-bold">
-            {sorted.length} finalist{sorted.length === 1 ? '' : 's'}
-            {sorted.length !== entries.length && <span className="ml-2 text-sm font-normal text-muted-foreground">of {entries.length}</span>}
-          </h2>
-        </div>
-
-        {sorted.length ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 items-start">
-            {sorted.map((e, i) => (
-              <VoteCard
-                key={e.id}
-                entry={e}
-                rank={i + 1}
-                index={i}
-                finished={finished}
-                complianceBlocked={complianceBlocked}
-                challengeTheme={challenge.theme || challenge.title}
-                onOpen={openLightbox}
-                votedEntryIds={votedIds}
-                onVoted={onVoted}
-                initialCount={voteCounts[e.id] ?? e.community_votes ?? e.vote_count ?? 0}
-                commentCount={commentCounts[e.id] || 0}
-              />
-            ))}
-          </div>
+      <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6 pb-16 sm:px-8">
+        {list.length ? (
+          list.map((e, i) => (
+            <VoteCard
+              key={e.id}
+              entry={e}
+              rank={i + 1}
+              index={i}
+              finished={finished}
+              isActive={!finished}
+              complianceBlocked={complianceBlocked}
+              challengeTheme={title}
+              search={search}
+              onOpen={openLightbox}
+              votedEntryIds={votedIds}
+              onVoted={onVoted}
+              initialCount={voteCounts[e.id] ?? e.community_votes ?? e.vote_count ?? 0}
+              commentCount={commentCounts[e.id] || 0}
+            />
+          ))
         ) : (
-          <div className="rounded-3xl border border-dashed border-border py-20 text-center">
-            <div className="text-5xl">{entries.length ? '🔍' : '🗳️'}</div>
-            <p className="mt-4 font-heading text-xl font-bold">{entries.length ? 'No finalists match your filters' : 'No finalists yet'}</p>
-            <p className="mt-1 text-muted-foreground">{entries.length ? 'Try clearing your filters.' : 'Approved entries will appear here for community voting.'}</p>
-            {(search || division || state) && (
-              <button onClick={reset} className="mt-6 rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground">Clear filters</button>
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-orange-100 text-4xl">
+              {hasFilters ? '🔍' : '🎨'}
+            </div>
+            <p className="text-xl font-bold text-stone-900">
+              {hasFilters ? 'No entries match just yet' : 'Finalists will appear here after review'}
+            </p>
+            <p className="mt-2 max-w-sm text-base text-stone-600">
+              {hasFilters
+                ? 'Try a different search term or clear a filter. Your favourite might be one chip away.'
+                : 'Approved entries from this challenge show up here once our team has reviewed them.'}
+            </p>
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={reset}
+                className="mt-5 min-h-[44px] rounded-full bg-teal-600 px-6 font-semibold text-white transition-colors hover:bg-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500 focus-visible:ring-offset-2"
+              >
+                Clear All Filters
+              </button>
             )}
           </div>
         )}
       </div>
+
       {lightbox && participants[lightbox.p] && (
         <EntryLightbox
           participants={participants}
