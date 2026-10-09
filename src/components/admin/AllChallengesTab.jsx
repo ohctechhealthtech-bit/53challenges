@@ -46,6 +46,21 @@ export default function AllChallengesTab({ categories, reference, onReload, open
   }, [openCreate]);
 
   const saved = () => { load(); onReload?.(); };
+  // Flip the featured flag in place and tell the parent. Optimistic, so the
+  // star answers at once; if the update is refused the row goes back and the
+  // reason is shown, rather than the star lying about what is on record.
+  const toggleFeatured = async (c) => {
+    const next = !c.is_featured;
+    setRows((prev) => prev.map((r) => (r.id === c.id ? { ...r, is_featured: next } : r)));
+    try {
+      const res = await adminChallengeApi.updateChallenge({ id: c.id, challenge: { is_featured: next } });
+      if (res?.ok === false) throw new Error(res?.error?.message || res?.error || 'Update refused');
+      onReload?.();
+    } catch (e) {
+      setRows((prev) => prev.map((r) => (r.id === c.id ? { ...r, is_featured: !next } : r)));
+      setError((e && e.message) || 'Could not update the featured flag.');
+    }
+  };
 
   return (
     <>
@@ -69,7 +84,7 @@ export default function AllChallengesTab({ categories, reference, onReload, open
       {loading ? (
         <p className="mt-6 text-sm text-muted-foreground">Loading challenges…</p>
       ) : (
-        <ChallengeTable challenges={rows} onEdit={(c) => { setEditing(c); setOpen(true); }} />
+        <ChallengeTable challenges={rows} onEdit={(c) => { setEditing(c); setOpen(true); }} onToggleFeatured={toggleFeatured} />
       )}
 
       {open && (

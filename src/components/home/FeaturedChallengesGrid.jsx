@@ -63,7 +63,14 @@ export default function FeaturedChallengesGrid() {
       });
       if (!candidates.length) continue;
 
+      // An admin-featured challenge takes its category's slot outright. The
+      // flag existed on the record all along and nothing read it; the order
+      // below was the only thing deciding, so the star in the admin list
+      // had no effect here. Among unfeatured ones the old rule still holds.
       candidates.sort((a, b) => {
+        const fa = a.is_featured ? 1 : 0;
+        const fb = b.is_featured ? 1 : 0;
+        if (fa !== fb) return fb - fa;
         const pa = challengePhase(a);
         const pb = challengePhase(b);
         if (pa === 'submit' && pb !== 'submit') return -1;
@@ -75,11 +82,16 @@ export default function FeaturedChallengesGrid() {
       picked.push(candidates[0]);
     }
 
-    picked.sort(
-      (a, b) =>
+    // Featured ones lead the grid as well, then the soonest to close.
+    picked.sort((a, b) => {
+      const fa = a.is_featured ? 1 : 0;
+      const fb = b.is_featured ? 1 : 0;
+      if (fa !== fb) return fb - fa;
+      return (
         daysLeft(a.submission_ends_at || a.end_date || a.voting_ends_at) -
         daysLeft(b.submission_ends_at || b.end_date || b.voting_ends_at)
-    );
+      );
+    });
 
     return picked.slice(0, 6);
   }, [all, categories]);
