@@ -14,6 +14,7 @@ import HostRequestAiAnalysis from './HostRequestAiAnalysis';
 import HostRequestConvertDialog from './HostRequestConvertDialog';
 import { humanize, humanizeNotes } from './humanizeRequest';
 import { mapLocalDraftToDetail } from './mapLocalDraft';
+import ExactPaymentPanel from './ExactPaymentPanel';
 
 const STATUSES = ['new', 'in_review', 'contacted', 'accepted', 'declined'];
 
@@ -120,6 +121,12 @@ export default function HostRequestDetailDialog({ open, onOpenChange, requestId,
             </p>
           )}
         </DialogHeader>
+        {/* The exact amount charged, from our Stripe record. The request's own
+            budget and notes come from the parent and have disagreed with it. */}
+        <ExactPaymentPanel
+          email={request?.contact_email || row?.contact_email || ''}
+          requestId={request?.id || row?.id || ''}
+        />
 
         {loading ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Loading request…</p>

@@ -132,7 +132,8 @@ public class HostRequestPushService {
    * database is eventually consistent; every other error is permanent and
    * retrying would only delay the answer.
    */
-  public boolean confirmPayment(String invoiceId, String paymentIntentId, String email) {
+  public boolean confirmPayment(String invoiceId, String paymentIntentId, String email,
+      long amountCents) {
     if (isBlank(invoiceId) || isBlank(paymentIntentId)) {
       log.warn("Cannot confirm a host payment without both an invoice and an intent");
       return false;
@@ -143,6 +144,13 @@ public class HostRequestPushService {
     payload.put("invoice_id", invoiceId);
     payload.put("payment_intent_id", paymentIntentId);
     payload.put("email", email == null ? "" : email);
+    // The exact amount Stripe charged. The parent has been writing its own
+    // figure into the request notes and budget, which disagreed with what the
+    // host paid; this gives it the real one to record.
+    if (amountCents > 0) {
+      payload.put("amount_paid_cents", amountCents);
+      payload.put("amount_paid", amountCents / 100d);
+    }
 
     String lastError = "";
     for (long delay : RETRY_DELAYS) {

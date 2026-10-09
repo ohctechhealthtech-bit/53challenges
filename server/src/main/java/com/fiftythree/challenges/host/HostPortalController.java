@@ -83,7 +83,7 @@ public class HostPortalController {
       "admin_queues", "admin_grant_host_role", "admin_publish_proposal",
       "admin_preview_challenges", "admin_update_challenge", "admin_create_challenge",
       "admin_decide", "list_idea_submissions", "set_idea_status", "admin_list",
-      "request_changes", "decline", "approve");
+      "request_changes", "decline", "approve", "admin_payments");
 
   /** Cached parent identifiers that a draft save must never wipe. */
   private static final List<String> PRESERVED_KEYS = List.of(
@@ -115,6 +115,7 @@ public class HostPortalController {
   private final ObjectMapper mapper;
   private final HostPackagesService hostPackages;
   private final ChallengeApiClient upstream;
+  private final HostTaxInvoiceService taxInvoice;
 
   public HostPortalController(
       HostPricing pricing,
@@ -133,7 +134,8 @@ public class HostPortalController {
       JsonColumn json,
       ObjectMapper mapper,
       HostPackagesService hostPackages,
-      ChallengeApiClient upstream) {
+      ChallengeApiClient upstream,
+      HostTaxInvoiceService taxInvoice) {
     this.pricing = pricing;
     this.organisations = organisations;
     this.push = push;
@@ -151,6 +153,7 @@ public class HostPortalController {
     this.mapper = mapper;
     this.hostPackages = hostPackages;
     this.upstream = upstream;
+    this.taxInvoice = taxInvoice;
   }
 
   /** Who is calling, and whether they arrived with a real session. */
@@ -249,6 +252,7 @@ public class HostPortalController {
         case "mark_notifications_read" -> markNotificationsRead(identity);
 
         case "admin_queues" -> adminQueues();
+        case "admin_payments" -> adminPayments(request);
         case "admin_list" -> ResponseEntity.ok(Map.of("proposals",
             hostApplications().stream().map(this::proposalJson).toList()));
         case "admin_publish_proposal" -> setReviewStatus(request, "live");
@@ -499,7 +503,9 @@ public class HostPortalController {
     invoice.setLabel(label);
     invoice.setAmount((double) cents);
     invoice.setCurrency("aud");
-    invoice.setLineItems(write(List.of()));
+    // The breakdown is recorded with the charge, reconciled to the exact cents
+    // Stripe will take, so the invoice sent later says what was really paid.
+    invoice.setLineItems(write(taxInvoice.breakdown(cents, parentPrice, label)));
     invoice.setStatus("pending");
     invoice.setStripePaymentIntentId(intent.path("id").asText(""));
     invoice.setCreatedDate(now);
@@ -518,6 +524,43 @@ public class HostPortalController {
     return ResponseEntity.ok(out);
   }
 
+
+  /**
+   * The payments this app took for a host, as Stripe confirmed them. Admin only.
+   *
+   * <p>The admin request view shows figures the parent writes into its own
+   * notes, and those disagreed with what hosts actually paid. These are the
+   * amounts charged, to the cent, with the GST split recorded at charge time,
+   * so the admin can see the exact figure beside the parent's.
+   */
+  private ResponseEntity<?> adminPayments(Map<String, Object> request) {
+    String email = str(request.get("email"));
+    String requestId = str(request.get("request_id"));
+    List<Map<String, Object>> out = new ArrayList<>();
+    if (email != null) {
+      for (HostInvoiceEntity inv : invoices.findPaidByOwner(email, Limit.of(20))) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        long total = inv.getAmount() == null ? 0 : Math.round(inv.getAmount());
+        JsonNode lines = node(inv.getLineItems());
+        m.put("invoice_number", HostTaxInvoiceService.invoiceNumber(inv));
+        m.put("label", inv.getLabel());
+        m.put("amount_cents", total);
+        m.put("gst_cents", lines.path("gst_cents").asLong(Math.round(total / 11d)));
+        m.put("lines", lines.path("lines"));
+        m.put("paid_at", iso(inv.getPaidAt()));
+        m.put("stripe_payment_intent_id", inv.getStripePaymentIntentId());
+        HostApplicationDraftEntity d = nz(inv.getDraftId()).isEmpty()
+            ? null : drafts.findById(inv.getDraftId()).orElse(null);
+        Map<String, Object> a = d == null ? Map.of() : readMap(d.getAnswers());
+        String proposalId = firstNonBlank(str(a.get("main_app_proposal_id")),
+            str(a.get("main_domain_request_id")), nz(inv.getProposalId()));
+        m.put("main_app_proposal_id", proposalId);
+        m.put("matches_request", requestId != null && requestId.equals(proposalId));
+        out.add(m);
+      }
+    }
+    return ResponseEntity.ok(Map.of("payments", out));
+  }
   private ResponseEntity<?> confirmPayment(Map<String, Object> request, Identity identity) {
     String invoiceId = str(request.get("invoice_id"));
     Optional<HostInvoiceEntity> found = invoiceId == null
@@ -534,6 +577,7 @@ public class HostPortalController {
       return ResponseEntity.status(404).body(Map.of("error", "Invoice not found"));
     }
 
+    boolean justPaid = false;
     if (!"paid".equals(nz(invoice.getStatus()))) {
       if (!stripe.isConfigured()) {
         return ResponseEntity.status(500).body(Map.of("error", "Stripe keys not configured"));
@@ -544,6 +588,7 @@ public class HostPortalController {
             "error", "Payment has not completed yet"));
       }
       invoice.setStatus("paid");
+      justPaid = true;
       invoice.setPaidAt(Instant.now());
       invoice.setUpdatedDate(Instant.now());
       invoices.save(invoice);
@@ -566,10 +611,21 @@ public class HostPortalController {
         invoice.getOwnerEmail(),
         identity.email()).toLowerCase(Locale.ROOT);
 
+    // The invoice goes out once, on the transition to paid that Stripe has
+    // just confirmed. Before this the host got an in-app note and nothing in
+    // their inbox; the admin copy gives the exact charged amount to the team
+    // instead of whatever figure the parent writes into its request notes.
+    if (justPaid) {
+      String hostName = firstNonBlank(str(answers.get("contact_name")), str(answers.get("name")));
+      String org = firstNonBlank(str(answers.get("organisation_name")), str(answers.get("org_name")));
+      taxInvoice.send(invoice, confirmEmail, hostName, org);
+    }
+
     if (!parentInvoiceId.isEmpty() && !nz(invoice.getStripePaymentIntentId()).isEmpty()) {
       // Failure is logged inside, not surfaced: the card has been charged and
       // telling the host their payment failed would be untrue.
-      push.confirmPayment(parentInvoiceId, invoice.getStripePaymentIntentId(), confirmEmail);
+      push.confirmPayment(parentInvoiceId, invoice.getStripePaymentIntentId(), confirmEmail,
+          invoice.getAmount() == null ? 0L : Math.round(invoice.getAmount()));
     }
 
     return ResponseEntity.ok(Map.of("ok", true, "invoice", invoiceJson(invoice)));
@@ -696,7 +752,8 @@ public class HostPortalController {
         }
         if (invoice != null && !result.invoiceId().isEmpty()) {
           push.confirmPayment(result.invoiceId(),
-              nz(invoice.getStripePaymentIntentId()), identity.email());
+              nz(invoice.getStripePaymentIntentId()), identity.email(),
+              invoice.getAmount() == null ? 0L : Math.round(invoice.getAmount()));
         }
       } catch (HostRequestPushService.PushFailedException e) {
         // Saved locally but not sent. Reported with the proposal id so an
