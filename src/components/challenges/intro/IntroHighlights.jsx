@@ -1,22 +1,13 @@
 import { motion } from 'framer-motion';
-import {
-  Sparkles, Trophy, Heart, Star, Gift, Users, Camera, Palette, Music,
-  PenTool, Globe, Award, Lightbulb, Rocket, Shield, Clock, MapPin, Leaf,
-} from 'lucide-react';
+import { iconFor } from './introIcons';
 
-const ICONS = {
-  sparkles: Sparkles, trophy: Trophy, heart: Heart, star: Star, gift: Gift,
-  users: Users, camera: Camera, palette: Palette, music: Music, pen: PenTool,
-  'pen-tool': PenTool, globe: Globe, award: Award, lightbulb: Lightbulb,
-  rocket: Rocket, shield: Shield, clock: Clock, 'map-pin': MapPin, leaf: Leaf,
-};
 
 export default function IntroHighlights({ highlights, accent }) {
   if (!highlights?.length) return null;
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {highlights.map((h, i) => {
-        const Icon = ICONS[(h.icon || '').toLowerCase()] || Sparkles;
+        const Icon = iconFor(h.icon);
         return (
           <motion.div
             key={i}

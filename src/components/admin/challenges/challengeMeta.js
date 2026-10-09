@@ -40,3 +40,17 @@ export const fmtFee = (cents) => {
 // Date inputs speak YYYY-MM-DD; the parent stores full ISO timestamps.
 export const toDay = (v) => (v ? String(v).slice(0, 10) : '');
 export const toIso = (v) => (v ? `${String(v).slice(0, 10)}T00:00:00Z` : '');
+// Date-and-time, for <input type="datetime-local">. The value is local time
+// with no zone; it becomes a real instant only when saved.
+const pad = (n) => String(n).padStart(2, '0');
+export const toLocalDT = (v) => {
+  if (!v) return '';
+  const d = new Date(v);
+  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+};
+export const dtToIso = (v) => {
+  if (!v) return '';
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
+};

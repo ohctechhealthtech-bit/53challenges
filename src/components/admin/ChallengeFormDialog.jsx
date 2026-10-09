@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button';
 import { adminChallengeApi } from '@/lib/adminChallengeApi';
 import CheckboxGroup from '@/components/admin/challenges/CheckboxGroup';
 import ChallengeAiSuggestButton from '@/components/admin/challenges/ChallengeAiSuggestButton';
-import { statusLabel, titleCase, toDay, toIso, weightsLocked } from '@/components/admin/challenges/challengeMeta';
+import { statusLabel, titleCase, toLocalDT, dtToIso, weightsLocked } from '@/components/admin/challenges/challengeMeta';
+import EntryTypeCards from '@/components/admin/challenges/EntryTypeCards';
+import CoverImagePicker from '@/components/challenges/CoverImagePicker';
+import ChallengeIntroFields from '@/components/challenges/intro/ChallengeIntroFields';
+import { CONTENT_TYPE_OPTIONS, normalizeContentType } from '@/lib/contentType';
 
 const deepEqual = (a, b) => {
   if (a === b) return true;
@@ -14,6 +18,9 @@ const deepEqual = (a, b) => {
     if (a.length !== b.length) return false;
     return a.every((v, i) => deepEqual(v, b[i]));
   }
+  // Objects (the intro block) compare by content, so an untouched intro is
+  // not re-sent on every edit.
+  if (typeof a === 'object' && typeof b === 'object') return JSON.stringify(a) === JSON.stringify(b);
   return false;
 };
 
@@ -26,9 +33,9 @@ const initial = (c, categories) => ({
   season: c?.season || '',
   stage: c?.stage || 'state',
   status: c?.status || 'draft',
-  start_date: toDay(c?.start_date),
-  end_date: toDay(c?.end_date),
-  voting_end_date: toDay(c?.voting_end_date),
+  start_date: toLocalDT(c?.start_date),
+  end_date: toLocalDT(c?.end_date),
+  voting_end_date: toLocalDT(c?.voting_end_date),
   cover_image: c?.cover_image || '',
   entry_fee: c?.entry_fee ?? 0,
   accepted_entry_types: c?.accepted_entry_types || [],
@@ -36,6 +43,9 @@ const initial = (c, categories) => ({
   judge_weight: c?.judge_weight ?? 70,
   public_weight: c?.public_weight ?? 30,
   judges_required: c?.judges_required ?? 3,
+  content_type: normalizeContentType(c?.content_type),
+  capacity_limit: c?.capacity_limit ?? 0,
+  intro: c?.intro && typeof c.intro === 'object' ? c.intro : {},
 });
 
 export default function ChallengeFormDialog({
@@ -114,13 +124,16 @@ export default function ChallengeFormDialog({
         addIfChanged('season');
         addIfChanged('stage');
         addIfChanged('status');
-        addIfChanged('start_date', (v) => toIso(v));
-        addIfChanged('end_date', (v) => toIso(v));
-        addIfChanged('voting_end_date', (v) => (v ? toIso(v) : null));
+        addIfChanged('start_date', (v) => dtToIso(v));
+        addIfChanged('end_date', (v) => dtToIso(v));
+        addIfChanged('voting_end_date', (v) => (v ? dtToIso(v) : null));
         addIfChanged('cover_image', (v) => v.trim());
         addIfChanged('entry_fee', (v) => Number(v) || 0);
         addIfChanged('accepted_entry_types');
         addIfChanged('age_divisions');
+        addIfChanged('content_type');
+        addIfChanged('capacity_limit', (v) => Math.max(0, Number(v) || 0));
+        addIfChanged('intro');
         // Weight fields are only writable while the challenge is still in Draft.
         if (!locked) {
           addIfChanged('judge_weight', (v) => Number(v));
@@ -138,14 +151,17 @@ export default function ChallengeFormDialog({
           season: values.season,
           stage: values.stage,
           status: values.status,
-          start_date: toIso(values.start_date),
-          end_date: toIso(values.end_date),
-          ...(values.voting_end_date ? { voting_end_date: toIso(values.voting_end_date) } : {}),
+          start_date: dtToIso(values.start_date),
+          end_date: dtToIso(values.end_date),
+          ...(values.voting_end_date ? { voting_end_date: dtToIso(values.voting_end_date) } : {}),
           cover_image: values.cover_image.trim(),
           entry_fee: Number(values.entry_fee) || 0,
           accepted_entry_types: values.accepted_entry_types,
           age_divisions: values.age_divisions,
           judges_required: Number(values.judges_required),
+          content_type: values.content_type,
+          capacity_limit: Math.max(0, Number(values.capacity_limit) || 0),
+          intro: values.intro,
           ...(locked ? {} : {
             judge_weight: Number(values.judge_weight),
             public_weight: Number(values.public_weight),
@@ -166,7 +182,7 @@ export default function ChallengeFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] w-[95vw] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{titleText || (editing ? `Edit ${challenge.title || 'challenge'}` : 'Add challenge')}</DialogTitle>
         </DialogHeader>
@@ -197,6 +213,8 @@ export default function ChallengeFormDialog({
             <textarea id="ch-description" rows={3} className="c53-input" disabled={readOnly} value={values.description} onChange={(e) => set('description', e.target.value)} />
           </Wrap>
 
+          <ChallengeIntroFields value={values.intro} disabled={readOnly} onChange={(v) => set('intro', v)} />
+
           <div className="grid gap-3 sm:grid-cols-3">
             <Wrap id="category" label="Category">
               <select id="ch-category" className="c53-input" disabled={readOnly} value={values.category} onChange={(e) => set('category', e.target.value)}>
@@ -226,21 +244,37 @@ export default function ChallengeFormDialog({
             <Text id="entry_fee" label="Entry fee (cents)" type="number" value={values.entry_fee} disabled={readOnly} onChange={set} />
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Text id="start_date" label="Start date" type="date" required value={values.start_date} disabled={readOnly} onChange={set} />
-            <Text id="end_date" label="End date" type="date" required value={values.end_date} disabled={readOnly} onChange={set} />
-            <Text id="voting_end_date" label="Voting ends" type="date" value={values.voting_end_date} disabled={readOnly} onChange={set} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Wrap id="content_type" label="Content type">
+              <select id="ch-content_type" className="c53-input" disabled={readOnly} value={values.content_type} onChange={(e) => set('content_type', e.target.value)}>
+                {CONTENT_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label} — {o.description}</option>)}
+              </select>
+            </Wrap>
+            <Wrap id="capacity_limit" label="Participant capacity">
+              <input id="ch-capacity_limit" type="number" min="0" className="c53-input" disabled={readOnly} placeholder="0 = no limit" value={values.capacity_limit} onChange={(e) => set('capacity_limit', e.target.value)} />
+              <p className="mt-1 text-xs text-muted-foreground">Maximum approved entries. 0 = unlimited.</p>
+            </Wrap>
           </div>
 
-          <Text id="cover_image" label="Cover image URL" value={values.cover_image} disabled={readOnly} onChange={set} />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Text id="start_date" label="Start date & time" type="datetime-local" required value={values.start_date} disabled={readOnly} onChange={set} />
+            <Text id="end_date" label="Submission deadline" type="datetime-local" required value={values.end_date} disabled={readOnly} onChange={set} />
+            <Text id="voting_end_date" label="Voting closes" type="datetime-local" value={values.voting_end_date} disabled={readOnly} onChange={set} />
+          </div>
 
-          <CheckboxGroup
-            label="Accepted entry types"
-            options={reference?.entry_types || []}
-            values={values.accepted_entry_types}
-            disabled={readOnly}
-            onChange={(v) => set('accepted_entry_types', v)}
-          />
+          <Wrap id="cover_image" label="Cover image">
+            <CoverImagePicker value={values.cover_image} disabled={readOnly} onChange={(v) => set('cover_image', v)} />
+          </Wrap>
+
+          <Wrap id="accepted_entry_types" label="Entry types accepted">
+            <EntryTypeCards
+              options={reference?.entry_types || []}
+              values={values.accepted_entry_types}
+              disabled={readOnly}
+              onChange={(v) => set('accepted_entry_types', v)}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">Leave all unticked to accept every type.</p>
+          </Wrap>
 
           <CheckboxGroup
             label="Age divisions"
@@ -256,6 +290,9 @@ export default function ChallengeFormDialog({
             <Text id="judges_required" label="Judges required" type="number" value={values.judges_required} disabled={readOnly || locked} onChange={set} />
           </div>
 
+          {Number(values.judge_weight) + Number(values.public_weight) !== 100 && !readOnly && !locked && (
+            <p className="text-xs text-destructive">Judge and public weights must add up to 100.</p>
+          )}
           {locked && !readOnly && (
             <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Lock className="h-3.5 w-3.5" /> Locked once the challenge leaves Draft.
